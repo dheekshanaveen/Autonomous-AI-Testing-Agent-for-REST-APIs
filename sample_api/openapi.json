@@ -1,0 +1,473 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sample Shopping API (Controlled Vulnerable Target)",
+    "description": "A controlled, isolated shopping API built for autonomous API testing experiments.\n\n**Demo credentials:**\n- Alice: `alice` / `alice123`\n- Bob: `bob` / `bob123`\n\n**Notice:** Contains an intentional BOLA vulnerability on `GET /orders/{order_id}`.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "System health check",
+        "description": "Returns a simple health status to verify the API is running.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Authenticate demo user",
+        "description": "Authenticates local demo users (Alice or Bob) and returns a Bearer access token.",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Create a new order",
+        "description": "Creates an order for the currently authenticated user.",
+        "operationId": "create_new_order_orders_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/orders/{order_id}": {
+      "get": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Get an order by ID",
+        "description": "Retrieve order details by order_id. Requires Bearer authentication.\n\n\u26a0\ufe0f **VULNERABILITY NOTE (OWASP API1:2023 - BOLA):** This endpoint authenticates the caller but intentionally does not check whether the authenticated user owns this order. Any authenticated user can access any other user's order.",
+        "operationId": "get_order_by_id_orders__order_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reset": {
+      "post": {
+        "tags": [
+          "Testing & Admin"
+        ],
+        "summary": "Reset test database state",
+        "description": "Resets all orders and active sessions. Only available when ENABLE_TEST_RESET is True.",
+        "operationId": "reset_test_state_admin_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok",
+            "examples": [
+              "ok"
+            ]
+          },
+          "app": {
+            "type": "string",
+            "title": "App",
+            "default": "Sample Shopping API",
+            "examples": [
+              "Sample Shopping API"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": "1.0.0",
+            "examples": [
+              "1.0.0"
+            ]
+          }
+        },
+        "type": "object",
+        "title": "HealthResponse",
+        "description": "Health check response."
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "description": "Demo username ('alice' or 'bob')",
+            "examples": [
+              "alice"
+            ]
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "Demo password ('alice123' or 'bob123')",
+            "examples": [
+              "alice123"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "description": "User login credentials."
+      },
+      "OrderCreate": {
+        "properties": {
+          "item_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Item Name",
+            "description": "Name of the item purchased",
+            "examples": [
+              "Wireless Headphones"
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity",
+            "description": "Quantity of items (must be > 0)",
+            "examples": [
+              2
+            ]
+          },
+          "total_price": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Price",
+            "description": "Total order price (must be >= 0)",
+            "examples": [
+              59.98
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_name",
+          "quantity",
+          "total_price"
+        ],
+        "title": "OrderCreate",
+        "description": "Schema for creating a new order."
+      },
+      "OrderResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique identifier for the order",
+            "examples": [
+              "ord-1"
+            ]
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "description": "ID of the user who owns this order",
+            "examples": [
+              "user-alice"
+            ]
+          },
+          "item_name": {
+            "type": "string",
+            "title": "Item Name",
+            "description": "Name of the item purchased",
+            "examples": [
+              "Wireless Headphones"
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity",
+            "description": "Quantity of items",
+            "examples": [
+              2
+            ]
+          },
+          "total_price": {
+            "type": "number",
+            "title": "Total Price",
+            "description": "Total price",
+            "examples": [
+              59.98
+            ]
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Order status",
+            "default": "pending",
+            "examples": [
+              "pending"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "ISO 8601 creation timestamp",
+            "examples": [
+              "2026-10-12T12:00:00Z"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "item_name",
+          "quantity",
+          "total_price",
+          "created_at"
+        ],
+        "title": "OrderResponse",
+        "description": "Schema for order details."
+      },
+      "ResetResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "reset",
+            "examples": [
+              "reset"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Test database reset to initial state",
+            "examples": [
+              "Test database reset to initial state"
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ResetResponse",
+        "description": "Response returned when test state is reset."
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "Bearer token to include in the Authorization header"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "description": "Token type",
+            "default": "bearer"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "description": "Unique user identifier"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "description": "Username of the authenticated user"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "user_id",
+          "username"
+        ],
+        "title": "TokenResponse",
+        "description": "Authentication token response."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "description": "Provide your Bearer token received from /auth/login",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
