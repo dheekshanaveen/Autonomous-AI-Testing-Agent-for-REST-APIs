@@ -169,7 +169,7 @@ def test_deterministic_test_reset(client: TestClient):
     # 4. Logging back in with fresh token shows the previous order no longer exists
     fresh_login = client.post("/auth/login", json={"username": "alice", "password": "alice123"})
     fresh_headers = {"Authorization": f"Bearer {fresh_login.json()['access_token']}"}
-    check_resp = client.get(f"/orders/{order_id}", fresh_headers)
+    check_resp = client.get(f"/orders/{order_id}", headers=fresh_headers)
     assert check_resp.status_code == 404
 
 
