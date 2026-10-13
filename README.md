@@ -4,13 +4,20 @@ An AI-assisted system that automatically inspects, tests, and discovers bugs and
 
 ---
 
+## Documentation
+
+- **[PRD.md](PRD.md):** Complete Product Requirements Document covering project goals, modular architecture, and stage-by-stage implementation milestones.
+- **[DECISIONS.md](DECISIONS.md):** Architectural Decision Records (ADRs) tracking foundational design and technical decisions.
+
+---
+
 ## Roadmap Progress
 
 - [x] **Step 1: Controlled Sample API** (FastAPI shopping API with auth, orders, and intentional BOLA bug)
 - [x] **Step 2: OpenAPI Specification Reader** (Structured specification parser, reference resolver, and validator)
-- [ ] **Step 3: Request Executor**
-- [ ] **Step 4: Basic Test Generation & Dependency Handling**
-- [ ] **Step 5: Bug Detection & Security Oracles**
+- [x] **Step 3: Request Executor** (HTTP client with path substitution, Bearer auth, redaction, and tracing)
+- [x] **Step 4: Automatic Test Generation & Dependency Handling** (Schema synthesizer, mutation generator, NetworkX dependency graph, sequence runner, Schemathesis baseline)
+- [x] **Step 5: Bug Detection & Security Oracles** (Server error oracle, schema conformance validator, BOLA cross-user security oracle)
 - [ ] **Step 6: Verification & Test Minimization**
 - [ ] **Step 7: AI-Assisted Diagnosis & Reporting**
 - [ ] **Step 8: Evaluation & Benchmark Comparisons**
@@ -21,9 +28,18 @@ An AI-assisted system that automatically inspects, tests, and discovers bugs and
 
 ```text
 api_testing/
+├── PRD.md                      # Product Requirements Document
+├── DECISIONS.md                # Architectural Decision Records (ADR)
+├── README.md                   # Quickstart and execution guide
+├── requirements.txt            # Python dependencies
+├── pytest.ini                  # Pytest configuration
 ├── agent/
 │   ├── __init__.py             # Agent package initializer
-│   └── spec_reader.py          # OpenAPI 3.x parser, $ref resolver & data models
+│   ├── spec_reader.py          # OpenAPI 3.x parser, $ref resolver & models
+│   ├── executor.py             # HTTP request executor, redaction & trace recorder
+│   ├── dependency_graph.py     # NetworkX dependency graph & sequence planner
+│   ├── test_generator.py       # Normal/invalid test synthesis & sequence runner
+│   └── oracles.py              # Bug detection oracles (5xx, schema, BOLA security)
 ├── sample_api/
 │   ├── __init__.py             # Sample API package
 │   ├── config.py               # Settings (Host, Port, Reset toggle)
@@ -32,46 +48,73 @@ api_testing/
 │   ├── auth.py                 # Demo credentials & Bearer token management
 │   ├── main.py                 # FastAPI application and endpoints
 │   └── openapi.json            # Exported OpenAPI 3.1 specification
-├── tests/
-│   ├── __init__.py             # Tests package
-│   ├── conftest.py             # Fixtures (clean database per test, TestClient)
-│   ├── test_sample_api.py      # 9 tests verifying sample API & intentional BOLA bug
-│   └── test_spec_reader.py     # 16 tests verifying spec reader, parsing, $ref, errors
-├── pytest.ini                  # Pytest configuration
-├── requirements.txt            # Python package dependencies
-└── README.md                   # Documentation and execution instructions
+└── tests/
+    ├── __init__.py             # Tests package
+    ├── conftest.py             # Shared fixtures (clean state, TestClient)
+    ├── test_sample_api.py      # 9 tests verifying sample API & intentional BOLA bug
+    ├── test_spec_reader.py     # 16 tests verifying spec reader, parsing, $ref, errors
+    ├── test_executor.py        # 13 tests verifying request execution, auth, redaction
+    ├── test_dependency_graph.py# 6 tests verifying NetworkX graph & sequencing
+    ├── test_generator.py       # 10 tests verifying normal/invalid generation & sequences
+    └── test_oracles.py         # 14 tests verifying server errors, schema violations & BOLA
 ```
 
 ---
 
-## Stage 1: Controlled Sample API
+## Stage 4: Test Generator & Dependency Handling
 
-The sample API models an e-commerce shopping service:
-- Predefined local demo users: `alice` (`alice123`) and `bob` (`bob123`).
-- Authenticates users and returns Bearer tokens.
-- Allows authenticated users to create orders.
-- **Intentional BOLA Vulnerability:** `GET /orders/{order_id}` authenticates the user, but omits ownership validation (`order.user_id == current_user.user_id`). As a result, User Bob can retrieve User Alice's private order by simply providing Alice's `order_id`.
-- **Deterministic Reset:** `POST /admin/reset` clears all orders and active tokens for repeatable test states.
+### 1. Automatic Test Generator (`agent/test_generator.py`)
+- **Normal Tests:** Automatically synthesizes valid payloads matching OpenAPI schema types, enums, examples, and constraints, expecting documented 2xx status codes.
+- **Invalid-Input Tests:** Systematically applies mutations:
+  - Omits required fields (expecting 400 or 422).
+  - Injects type mismatches, e.g. sending text for integer quantities (expecting 400 or 422).
+  - Tests boundary violations, e.g. negative prices (expecting 400 or 422).
+  - Tests unauthenticated requests on secured endpoints (expecting 401).
+
+### 2. Dependency Graph (`agent/dependency_graph.py`)
+- Uses NetworkX directed graphs (`DiGraph`) to model producer-consumer relationships:
+  - Links operations requiring authentication to `POST /auth/login` (source: `access_token` -> target: `auth_token`).
+  - Links resource consumers (e.g. `GET /orders/{order_id}`) to creators (`POST /orders`, source: `id` -> target: `order_id`).
+- Automatically computes topological execution plans (`SequencePlan`).
+
+### 3. Dependent Sequence Runner
+- Executes multi-step workflows: `Login -> Create Order -> Retrieve Order`.
+- Propagates dynamic values across requests (e.g., extracts token from login and order ID from order creation, passing both into order retrieval).
+
+### 4. Schemathesis Baseline Integration
+- Integrated Schemathesis 4.x property-based testing to provide comparative benchmark coverage.
+- All Schemathesis test cases are explicitly labeled `[SCHEMATHESIS]` to distinguish them from custom agent-generated tests.
 
 ---
 
-## Stage 2: OpenAPI Specification Reader (`agent/spec_reader.py`)
+## Stage 5: Bug Detection & Security Oracles (`agent/oracles.py`)
 
-The specification reader reads an OpenAPI 3.0.x or 3.1.x document from an active URL (`http://127.0.0.1:8000/openapi.json`), a local file (`sample_api/openapi.json`), or an in-memory dictionary.
+The agent implements three deterministic behavioral oracles that inspect HTTP test results:
 
-### Key Capabilities
-1. **Endpoint Discovery:** Extracts all paths and operations (`GET /health`, `POST /auth/login`, `POST /orders`, `GET /orders/{order_id}`, `POST /admin/reset`).
-2. **Parameter Extraction:** Identifies path, query, header, and cookie parameters, tracking required status and types.
-3. **Request Body Parsing:** Identifies accepted media types (e.g. `application/json`), required flags, and resolved JSON schemas.
-4. **Response Parsing:** Maps status codes (`200`, `201`, `422`), descriptions, content types, and resolved schemas.
-5. **Component Reference Resolution (`$ref`):** Follows internal JSON pointers (e.g. `#/components/schemas/OrderResponse`), handles nested schemas, and protects against circular schema definitions.
-6. **Authentication Extraction:** Parses `components.securitySchemes` (such as `HTTPBearer`) and operation-specific or global security requirements.
-7. **Explicit Dependency / Link Extraction:** Extracts explicit OpenAPI links defined on responses (`operationId`, `parameters`).
-8. **Robust Error Handling:** Distinguishes between connection failures (`SpecConnectionError`), missing files (`SpecNotFoundError`), invalid JSON (`SpecParseError`), missing OpenAPI structural fields (`SpecValidationError`), and unresolved pointers (`SpecResolutionError`).
+1. **Check 1: Server Error Oracle (`ServerErrorOracle`):**
+   - Catches HTTP 5xx responses (500, 502, 503).
+   - Records sanitized request details and response data as a suspicious/possible problem (`is_confirmed=False`) for investigation without prematurely asserting a bug.
+
+2. **Check 2: Schema Conformance Oracle (`SchemaConformanceOracle`):**
+   - Compares actual HTTP status codes and response bodies with the OpenAPI documentation.
+   - Uses standard JSON Schema validation (`jsonschema`) to flag missing required fields, type mismatches (e.g. price returned as string), and undocumented status codes as confirmed contract violations (`is_confirmed=True`).
+   - If expected behavior is not documented, does not invent rules.
+
+3. **Check 3: BOLA Security Oracle (`BOLAOracle`):**
+   - Tests for Broken Object Level Authorization (OWASP API1:2023):
+     1. User Alice logs in and creates an order (`POST /orders`).
+     2. User Bob logs in and attempts to retrieve Alice's order using Bob's Bearer token (`GET /orders/{order_id}`).
+     3. Compares caller identity (`user-bob`) with resource owner (`user-alice`). If Bob receives Alice's private data, records a confirmed critical BOLA vulnerability with evidence.
+     4. Runs a control check to ensure Alice accessing her own order is recognized as authorized and not flagged.
+
+4. **Credential Redaction:**
+   - All passwords, tokens, and `Authorization` headers are sanitized (`[REDACTED]`) before being recorded in finding evidence.
 
 ---
 
-## Setup & Running on Windows (PowerShell)
+## Setup & Running on Windows (VS Code / PowerShell)
+
+Open the project folder in VS Code. Open **Terminal → New Terminal** (PowerShell).
 
 ### 1. Install Dependencies
 
@@ -79,9 +122,7 @@ The specification reader reads an OpenAPI 3.0.x or 3.1.x document from an active
 python -m pip install -r requirements.txt
 ```
 
-### 2. Start the Sample API
-
-Start the server on `127.0.0.1:8000`:
+### 2. Start the Sample API (Terminal 1)
 
 ```powershell
 python -m uvicorn sample_api.main:app --host 127.0.0.1 --port 8000 --reload
@@ -90,67 +131,41 @@ python -m uvicorn sample_api.main:app --host 127.0.0.1 --port 8000 --reload
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 
-### 3. Run the Specification Reader
-
-You can run the specification reader directly from the command line against the local JSON file (no server needed):
+### 3. Run the Bug Detection Oracles Live Demonstration (Terminal 2)
 
 ```powershell
-python -m agent.spec_reader sample_api/openapi.json
+python -m agent.oracles http://127.0.0.1:8000
 ```
 
-Or run it against the live server URL when the server is running:
+### 4. Run the Test Generator Demonstration (Terminal 2)
 
 ```powershell
-python -m agent.spec_reader http://127.0.0.1:8000/openapi.json
+python -m agent.test_generator http://127.0.0.1:8000
 ```
 
----
+### 5. Run All Automated Tests
 
-## Running Automated Tests
-
-Run all 25 automated tests across both stages:
+Run all 68 automated tests across all 5 stages:
 
 ```powershell
 pytest -v
 ```
 
-To run only the Step 2 specification reader tests:
+Or run tests by module:
 
 ```powershell
+# Step 5 Bug Detection Oracles & BOLA (14 tests)
+pytest tests/test_oracles.py -v
+
+# Step 4 Test Generation and Sequences (16 tests)
+pytest tests/test_generator.py tests/test_dependency_graph.py -v
+
+# Step 3 Request Executor (13 tests)
+pytest tests/test_executor.py -v
+
+# Step 2 OpenAPI Specification Reader (16 tests)
 pytest tests/test_spec_reader.py -v
-```
 
-To run only the Step 1 sample API tests:
-
-```powershell
+# Step 1 Sample API and BOLA Bug (9 tests)
 pytest tests/test_sample_api.py -v
-```
-
----
-
-## Reproducing the Deliberate BOLA Bug Manually
-
-While the API server is running on `http://127.0.0.1:8000`, run this script in PowerShell:
-
-```powershell
-# 1. Alice logs in
-$aliceLogin = Invoke-RestMethod -Uri "http://127.0.0.1:8000/auth/login" -Method Post -ContentType "application/json" -Body '{"username":"alice","password":"alice123"}'
-$aliceToken = $aliceLogin.access_token
-
-# 2. Alice creates a private order
-$orderBody = '{"item_name":"Private Security Vault","quantity":1,"total_price":79.99}'
-$aliceOrder = Invoke-RestMethod -Uri "http://127.0.0.1:8000/orders" -Method Post -ContentType "application/json" -Headers @{ Authorization = "Bearer $aliceToken" } -Body $orderBody
-$orderId = $aliceOrder.id
-Write-Host "Created Alice's Order: $orderId"
-
-# 3. Bob logs in
-$bobLogin = Invoke-RestMethod -Uri "http://127.0.0.1:8000/auth/login" -Method Post -ContentType "application/json" -Body '{"username":"bob","password":"bob123"}'
-$bobToken = $bobLogin.access_token
-
-# 4. Bob exploits BOLA by querying Alice's order with Bob's token
-$stolenOrder = Invoke-RestMethod -Uri "http://127.0.0.1:8000/orders/$orderId" -Method Get -Headers @{ Authorization = "Bearer $bobToken" }
-
-# 5. Inspect leaked data
-Write-Host "Vulnerability Verified! Bob received Alice's order:"
-$stolenOrder | Format-List
 ```
