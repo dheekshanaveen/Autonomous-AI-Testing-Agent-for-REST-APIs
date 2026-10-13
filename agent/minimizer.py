@@ -433,6 +433,8 @@ class TestMinimizer:
 
                 # Candidate sequence omitting step i
                 candidate_steps = [s for j, s in enumerate(current_steps) if j != i]
+                if not candidate_steps:
+                    continue
                 candidate_seq = TestSequence(name=sequence.name, steps=candidate_steps)
                 cand_sig = candidate_seq.signature()
 

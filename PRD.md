@@ -75,8 +75,8 @@ Unlike standard fuzzers or black-box scanners that blindly spray endpoints with 
 | **Step 3** | Safe Request Executor, Redaction & Tracing | `agent/executor.py` | **Completed** | 13 tests passed |
 | **Step 4** | Automatic Test Generator, Dependency Graph & Sequences | `agent/dependency_graph.py`, `agent/test_generator.py` | **Completed** | 16 tests passed |
 | **Step 5** | Bug Detection Oracles & BOLA Verification | `agent/oracles.py` | **Completed** | 14 tests passed |
-| **Step 6** | Flakiness Check, Replay & Test Minimization | `agent/minimizer.py` | *Next Up* | Pending |
-| **Step 7** | LLM Diagnosis, Targeted Checks & Markdown/JSON Reports | `agent/reporter.py` | *Planned* | Pending |
+| **Step 6** | Flakiness Check, Replay & Test Minimization | `agent/verifier.py`, `agent/minimizer.py` | **Completed** | 11 tests passed |
+| **Step 7** | LLM Diagnosis, Targeted Checks & Markdown/JSON Reports | `agent/reporter.py` | *Next Up* | Pending |
 | **Step 8** | Benchmarking & Schemathesis Baseline Comparisons | `benchmarks/` | *Planned* | Pending |
 
 ---
@@ -130,3 +130,15 @@ Unlike standard fuzzers or black-box scanners that blindly spray endpoints with 
   5. Evaluates object ownership rule: if Bob receives Alice's private order (HTTP 200), flags critical confirmed BOLA vulnerability.
   6. Control check: Alice accessing her own order is confirmed legitimate and not flagged.
 - **Credential Redaction:** Guaranteed zero leakage of plaintext passwords or Bearer tokens in findings.
+
+### 5.7 Bug Verification & Test Minimization (`agent/verifier.py`, `agent/minimizer.py`)
+- **Bug Verifier (`agent/verifier.py`):**
+  - Replays failing and suspicious test scenarios from a clean starting state at least twice (`repeat_count >= 2`).
+  - Classifies outcomes into `CONFIRMED_REPRODUCIBLE` (100% reproduction), `FLAKY` (inconsistent reproduction across runs), or `NOT_REPRODUCIBLE` (disappeared).
+  - Enforces clean state reset before every trial without reusing stale tokens or IDs.
+- **Test Minimizer (`agent/minimizer.py`):**
+  - **1-Minimal Sequence Delta Debugging:** Iteratively removes non-essential requests from multi-step reproduction sequences.
+  - **Payload Field Delta Debugging:** Prunes optional, extraneous keys from JSON request bodies while preserving schema requirements.
+  - **Bug Invariance:** Rejects candidate sequences if the exact target vulnerability (e.g. BOLA violation) is lost or if prerequisite data dependencies fail.
+  - **Reduction Metric:** Calculates reduction ratio $1 - (\text{minimized} / \text{original})$. (e.g., reduces a 10-request noisy BOLA sequence to 4 essential requests, achieving a 60% reduction).
+

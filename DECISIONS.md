@@ -18,6 +18,8 @@ This document records the foundational and ongoing architectural decisions made 
 10. [ADR-010: Windows Console and Encoding Compatibility](#adr-010-windows-console-and-encoding-compatibility)
 11. [ADR-011: Multi-Tiered Bug Oracles & Suspicious vs Confirmed Findings](#adr-011-multi-tiered-bug-oracles--suspicious-vs-confirmed-findings)
 12. [ADR-012: Deterministic BOLA Cross-User Security Oracle](#adr-012-deterministic-bola-cross-user-security-oracle)
+13. [ADR-013: Deterministic Replay Bug Verification & Flakiness Classification](#adr-013-deterministic-replay-bug-verification--flakiness-classification)
+14. [ADR-014: 1-Minimal Sequence & Payload Delta Debugging](#adr-014-1-minimal-sequence--payload-delta-debugging)
 
 ---
 
@@ -122,4 +124,29 @@ This document records the foundational and ongoing architectural decisions made 
   3. Includes a control check: Alice accessing her own order is confirmed authorized and never flagged.
   4. Redacts all authentication tokens and passwords from evidence.
 - **Consequence:** Reliable, automated security verification that uncovers object authorization bugs with zero false positives on authorized owner accesses.
+
+---
+
+### ADR-013: Deterministic Replay Bug Verification & Flakiness Classification
+- **Status:** Accepted (Step 6)
+- **Context:** An autonomous testing system that alerts developers on every transient failure loses trust quickly. Failures may stem from timing, concurrency, or unseeded state rather than genuine bugs.
+- **Decision:** `BugVerifier` (`agent/verifier.py`) enforces clean replay:
+  1. Invokes `POST /admin/reset` before every trial run.
+  2. Replays the full reproducing test sequence at least twice (`repeat_count >= 2`).
+  3. Generates fresh authentication tokens and dynamic resource IDs on each run rather than reusing old state.
+  4. Classifies outcomes into three distinct states: `CONFIRMED_REPRODUCIBLE` (reproduced 100%), `FLAKY` (inconsistent across runs), or `NOT_REPRODUCIBLE` (resolved or transient).
+- **Consequence:** Distinguishes genuine, deterministic bugs from environment noise and eliminates false-positive reports.
+
+---
+
+### ADR-014: 1-Minimal Sequence & Payload Delta Debugging
+- **Status:** Accepted (Step 6)
+- **Context:** Multi-step API tests produced by fuzzers often contain dozens of unrelated calls (e.g. intervening health pings, unrelated reads) and bloated payloads, making bug triage difficult for developers.
+- **Decision:** `TestMinimizer` (`agent/minimizer.py`) implements a two-stage Delta Debugging approach:
+  1. **Request-Level 1-Minimality:** Iteratively tests omitting candidate requests while resetting state before each trial. A reduction is accepted if and only if the exact target vulnerability continues to reproduce.
+  2. **Field-Level 1-Minimality:** Iteratively removes extraneous keys from JSON payloads of remaining requests while ensuring schema constraints are satisfied.
+  3. **Dependency Protection:** If removing a prerequisite step breaks a downstream variable binding (e.g. missing auth token or order ID), the candidate is rejected.
+  4. **Signature Caching:** Computes deterministic hashes of candidate sequences to avoid duplicate executions.
+- **Consequence:** Produces concise reproduction cases (e.g., reducing a 10-request sequence to 4 essential steps with a 60% reduction ratio) while preserving the exact failure mode.
+
 

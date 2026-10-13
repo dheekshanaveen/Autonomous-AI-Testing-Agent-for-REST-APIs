@@ -160,9 +160,9 @@ def test_minimizer_reports_already_minimal_test():
     minimizer = TestMinimizer()
     finding = make_dummy_finding()
 
-    # Evaluator requires all 4 steps to reproduce
+    # Evaluator requires all 4 steps and original payloads intact
     def mock_evaluator(cand: TestSequence):
-        if cand.request_count == 4:
+        if cand.request_count == 4 and all(s.json_body == orig.json_body for s, orig in zip(cand.steps, seq.steps)):
             return True, finding
         return False, None
 
@@ -231,7 +231,11 @@ def test_minimizer_removes_unnecessary_payload_fields_mocked():
     finding = make_dummy_finding()
 
     def mock_evaluator(cand: TestSequence):
+        if not cand.steps:
+            return False, None
         body = cand.steps[0].json_body
+        if not isinstance(body, dict):
+            return False, None
         # Requires item_name and total_price, but redundant_note and gift_wrap are optional
         if "item_name" in body and "total_price" in body:
             return True, finding

@@ -18,7 +18,7 @@ An AI-assisted system that automatically inspects, tests, and discovers bugs and
 - [x] **Step 3: Request Executor** (HTTP client with path substitution, Bearer auth, redaction, and tracing)
 - [x] **Step 4: Automatic Test Generation & Dependency Handling** (Schema synthesizer, mutation generator, NetworkX dependency graph, sequence runner, Schemathesis baseline)
 - [x] **Step 5: Bug Detection & Security Oracles** (Server error oracle, schema conformance validator, BOLA cross-user security oracle)
-- [ ] **Step 6: Verification & Test Minimization**
+- [x] **Step 6: Verification & Test Minimization** (Clean replay bug verifier, flakiness detection, delta-debugging test sequence minimizer)
 - [ ] **Step 7: AI-Assisted Diagnosis & Reporting**
 - [ ] **Step 8: Evaluation & Benchmark Comparisons**
 
@@ -39,7 +39,9 @@ api_testing/
 │   ├── executor.py             # HTTP request executor, redaction & trace recorder
 │   ├── dependency_graph.py     # NetworkX dependency graph & sequence planner
 │   ├── test_generator.py       # Normal/invalid test synthesis & sequence runner
-│   └── oracles.py              # Bug detection oracles (5xx, schema, BOLA security)
+│   ├── oracles.py              # Bug detection oracles (5xx, schema, BOLA security)
+│   ├── verifier.py             # Clean-state replay & flakiness classification
+│   └── minimizer.py            # Delta-debugging sequence & payload minimizer
 ├── sample_api/
 │   ├── __init__.py             # Sample API package
 │   ├── config.py               # Settings (Host, Port, Reset toggle)
@@ -56,7 +58,8 @@ api_testing/
     ├── test_executor.py        # 13 tests verifying request execution, auth, redaction
     ├── test_dependency_graph.py# 6 tests verifying NetworkX graph & sequencing
     ├── test_generator.py       # 10 tests verifying normal/invalid generation & sequences
-    └── test_oracles.py         # 14 tests verifying server errors, schema violations & BOLA
+    ├── test_oracles.py         # 14 tests verifying server errors, schema violations & BOLA
+    └── test_verifier_minimizer.py # 11 tests verifying verifier, delta debugging & live BOLA
 ```
 
 ---
@@ -112,6 +115,23 @@ The agent implements three deterministic behavioral oracles that inspect HTTP te
 
 ---
 
+## Stage 6: Bug Verification & Test Minimization (`agent/verifier.py`, `agent/minimizer.py`)
+
+1. **Bug Verifier (`agent/verifier.py`):**
+   - Resets state and replays candidate bug scenarios at least twice (`repeat_count >= 2`).
+   - Categorizes findings into `CONFIRMED_REPRODUCIBLE`, `FLAKY`, or `NOT_REPRODUCIBLE`.
+   - Never reuses old credentials or resource IDs across replay runs.
+
+2. **Test Minimizer (`agent/minimizer.py`):**
+   - Applies Delta Debugging (1-minimal deletion pass) on failing multi-step request sequences.
+   - Removes unnecessary intermediate requests (e.g. redundant health checks).
+   - Prunes non-essential fields from JSON request bodies (e.g. optional notes).
+   - Preserves core data dependencies and the exact target vulnerability.
+   - Computes reduction metrics:
+     $$\text{Reduction Ratio} = 1 - \left(\frac{\text{Minimized Requests}}{\text{Original Requests}}\right)$$
+
+---
+
 ## Setup & Running on Windows (VS Code / PowerShell)
 
 Open the project folder in VS Code. Open **Terminal → New Terminal** (PowerShell).
@@ -131,21 +151,21 @@ python -m uvicorn sample_api.main:app --host 127.0.0.1 --port 8000 --reload
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 
-### 3. Run the Bug Detection Oracles Live Demonstration (Terminal 2)
+### 3. Run Bug Verification (Terminal 2)
 
 ```powershell
-python -m agent.oracles http://127.0.0.1:8000
+python -m agent.verifier http://127.0.0.1:8000
 ```
 
-### 4. Run the Test Generator Demonstration (Terminal 2)
+### 4. Run Test Minimization (Terminal 2)
 
 ```powershell
-python -m agent.test_generator http://127.0.0.1:8000
+python -m agent.minimizer http://127.0.0.1:8000
 ```
 
 ### 5. Run All Automated Tests
 
-Run all 68 automated tests across all 5 stages:
+Run all 79 automated tests across all 6 stages:
 
 ```powershell
 pytest -v
@@ -154,6 +174,9 @@ pytest -v
 Or run tests by module:
 
 ```powershell
+# Step 6 Verification and Minimization (11 tests)
+pytest tests/test_verifier_minimizer.py -v
+
 # Step 5 Bug Detection Oracles & BOLA (14 tests)
 pytest tests/test_oracles.py -v
 
