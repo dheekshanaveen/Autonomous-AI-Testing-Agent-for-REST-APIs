@@ -20,7 +20,7 @@ An AI-assisted system that automatically inspects, tests, and discovers bugs and
 - [x] **Step 5: Bug Detection & Security Oracles** (Server error oracle, schema conformance validator, BOLA cross-user security oracle)
 - [x] **Step 6: Verification & Test Minimization** (Clean replay bug verifier, flakiness detection, delta-debugging test sequence minimizer)
 - [x] **Step 7: AI-Assisted Diagnosis & Reporting** (Root cause hypothesis, code remediation, Markdown/JSON reports, standalone reproductions)
-- [ ] **Step 8: Evaluation & Benchmark Comparisons**
+- [x] **Step 8: Evaluation & Benchmark Comparisons** (Automated benchmarking suite, empirical Schemathesis comparison, JSON/CSV/Markdown reports)
 
 ---
 
@@ -43,6 +43,12 @@ api_testing/
 │   ├── verifier.py             # Clean-state replay & flakiness classification
 │   ├── minimizer.py            # Delta-debugging sequence & payload minimizer
 │   └── reporter.py             # AI/Rule-based diagnoser, Markdown/JSON reporter & reproductions
+├── benchmarks/                 # Step 8 Benchmark suite & empirical results
+│   ├── __init__.py             # Benchmarks package initializer
+│   ├── evaluator.py            # Automated evaluator for Agent vs Schemathesis
+│   ├── benchmark_results.json  # Structured machine-readable benchmark telemetry
+│   ├── benchmark_results.csv   # Tabular comparison metrics
+│   └── BENCHMARK_REPORT.md     # Comprehensive human-readable benchmark report
 ├── reports/                    # Generated Markdown, JSON & reproduction files
 │   ├── <finding_id>_<type>.md  # Comprehensive GitHub Flavored Markdown report
 │   ├── <finding_id>_<type>.json# Structured machine-readable JSON finding dump
@@ -65,7 +71,8 @@ api_testing/
     ├── test_generator.py       # 10 tests verifying normal/invalid generation & sequences
     ├── test_oracles.py         # 14 tests verifying server errors, schema violations & BOLA
     ├── test_verifier_minimizer.py # 11 tests verifying verifier, delta debugging & live BOLA
-    └── test_reporter.py        # 11 tests verifying AI diagnosis, reports & reproductions
+    ├── test_reporter.py        # 11 tests verifying AI diagnosis, reports & reproductions
+    └── test_benchmarks.py      # 3 tests verifying benchmark evaluator & Schemathesis
 ```
 
 ---
@@ -219,9 +226,22 @@ python -m agent.verifier http://127.0.0.1:8000
 python -m agent.minimizer http://127.0.0.1:8000
 ```
 
-### 7. Run All Automated Tests
+### 7. Run Evaluation Benchmarks (Step 8)
 
-Run all 90 automated tests across all 7 stages:
+Run empirical evaluation of Autonomous Agent vs Schemathesis baseline:
+
+```powershell
+python -m benchmarks.evaluator http://127.0.0.1:8000
+```
+
+Outputs:
+- Machine-readable JSON: `benchmarks/benchmark_results.json`
+- Tabular CSV: `benchmarks/benchmark_results.csv`
+- Detailed Markdown: `benchmarks/BENCHMARK_REPORT.md`
+
+### 8. Run All Automated Tests
+
+Run all 94 automated tests across all 8 roadmap stages:
 
 ```powershell
 pytest -v
@@ -230,6 +250,9 @@ pytest -v
 Or run tests by module:
 
 ```powershell
+# Step 8 Benchmarks and Evaluation (3 tests)
+pytest tests/test_benchmarks.py -v
+
 # Step 7 AI Diagnosis and Reporting (11 tests)
 pytest tests/test_reporter.py -v
 
@@ -251,3 +274,4 @@ pytest tests/test_spec_reader.py -v
 # Step 1 Sample API and BOLA Bug (9 tests)
 pytest tests/test_sample_api.py -v
 ```
+

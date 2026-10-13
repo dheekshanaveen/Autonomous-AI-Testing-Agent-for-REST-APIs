@@ -170,6 +170,7 @@ class RequestExecutor:
         self.default_headers: Dict[str, str] = default_headers or {}
         self._user_tokens: Dict[str, str] = {}
         self._custom_client: Optional[httpx.Client] = custom_client
+        self.traces: List[ExecutionResult] = []
 
     # --------------------------------------------------------------------------
     # Path & URL Formatting
@@ -384,6 +385,7 @@ class RequestExecutor:
         )
 
         logger.info(result.summary())
+        self.traces.append(result)
         return result
 
     # --------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+Metric,Autonomous AI Testing Agent,Schemathesis (Baseline Fuzzer)
+Tool Category,AI / Multi-Step Sequence Agent,Property-Based Contract Fuzzer
+Total Generated Tests,16,5
+Total HTTP Requests,198,5
+Execution Time (s),107.32,1.64
+BOLA Vulnerabilities Found,1,0
+True Positives,1,0
+False Positives,0,0
+Verified Reproducibility,Yes (100% across clean resets),N/A
+Test Minimization Reduction,60.0%,Not Supported
+Automated Code Fix Suggestion,Yes (in report),No
+Standalone Pytest Reproduction,Yes (generated file),No
+LLM Cost (USD),$0.0000,$0.0000

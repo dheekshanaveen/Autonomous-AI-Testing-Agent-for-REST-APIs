@@ -22,6 +22,8 @@ This document records the foundational and ongoing architectural decisions made 
 14. [ADR-014: 1-Minimal Sequence & Payload Delta Debugging](#adr-014-1-minimal-sequence--payload-delta-debugging)
 15. [ADR-015: AI Diagnosis with Graceful Rule-Based Fallback Architecture](#adr-015-ai-diagnosis-with-graceful-rule-based-fallback-architecture)
 16. [ADR-016: Dual-Format Reporting & Standalone Reproduction Suite](#adr-016-dual-format-reporting--standalone-reproduction-suite)
+17. [ADR-017: Empirical Benchmarking Methodology & Schemathesis Baseline](#adr-017-empirical-benchmarking-methodology--schemathesis-baseline)
+18. [ADR-018: Stateful Multi-Step Security vs Single-Request Property Fuzzing](#adr-018-stateful-multi-step-security-vs-single-request-property-fuzzing)
 
 ---
 
@@ -175,4 +177,24 @@ This document records the foundational and ongoing architectural decisions made 
   4. **Mandatory Redaction:** All reports and evidence dumps strictly scrub sensitive auth tokens and passwords to prevent credential leakage.
 - **Consequence:** Immediate, frictionless triage experience for developers with reproducible evidence.
 
+---
+
+### ADR-017: Empirical Benchmarking Methodology & Schemathesis Baseline
+- **Status:** Accepted (Step 8)
+- **Context:** To evaluate the testing agent's efficacy, we require objective empirical metrics comparing it against an industry-standard testing tool under fair, identical conditions. Factual performance must be reported without exaggerating capabilities or inventing numbers.
+- **Decision:**
+  1. **Dedicated Benchmark Engine (`benchmarks/evaluator.py`):** Created a unified evaluator that runs both the Autonomous Agent and Schemathesis 4.x against the local controlled API (`http://127.0.0.1:8000`).
+  2. **Empirical Metrics:** Measures total requests executed, wall-clock duration, bugs detected by category (functional, schema, BOLA), confirmed findings vs false positives, test minimization reduction ratios, and LLM token costs.
+  3. **Multi-Format Serialization:** Persists results as structured JSON (`benchmarks/benchmark_results.json`), summary CSV (`benchmarks/benchmark_results.csv`), and human-readable Markdown (`benchmarks/BENCHMARK_REPORT.md`).
+- **Consequence:** Provides reproducible, audited evidence of testing performance without fabricating results or asserting false statistical significance from a single benchmark target.
+
+---
+
+### ADR-018: Stateful Multi-Step Security vs Single-Request Property Fuzzing
+- **Status:** Accepted (Step 8)
+- **Context:** Schemathesis is extremely fast and effective at fuzzing single-endpoint boundaries and validating schema compliance, but under standard configuration it does not detect the deliberate BOLA vulnerability in our shopping API. We need to document why this difference exists objectively.
+- **Decision:**
+  1. **Document Technical Root Cause:** Schemathesis generates tests for individual endpoints in isolation without maintaining cross-user multi-step authentication contexts (Alice vs Bob) or resource ownership invariants. Because `GET /orders/{order_id}` returns HTTP 200 with a valid JSON schema conforming to `OrderResponse`, Schemathesis considers the response valid.
+  2. **Differentiate Tool Roles:** Clearly establish that our agent is not inherently "superior" to Schemathesis, but rather addresses a different testing dimension: stateful business logic and multi-user authorization flows, whereas Schemathesis excels at rapid specification-based property fuzzing.
+- **Consequence:** Clear, technically sound comparison that respects baseline tools and avoids misleading marketing claims.
 

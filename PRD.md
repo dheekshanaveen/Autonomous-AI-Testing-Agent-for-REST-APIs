@@ -46,11 +46,13 @@ Unlike standard fuzzers or black-box scanners that blindly spray endpoints with 
 │ 4. Request Executor           │ HTTP client with template substitution,│
 │    (agent/executor.py)        │ Bearer auth, redaction & tracing       │
 ├───────────────────────────────┴────────────────────────────────────────┤
-│ 5. Security & Bug Oracles (Step 5) [Pending]                           │
+│ 5. Security & Bug Oracles (Step 5) [Completed]                         │
 ├────────────────────────────────────────────────────────────────────────┤
-│ 6. Verification & Minimization (Step 6) [Pending]                      │
+│ 6. Verification & Minimization (Step 6) [Completed]                    │
 ├────────────────────────────────────────────────────────────────────────┤
-│ 7. AI Diagnosis & Reporting (Step 7) [Pending]                         │
+│ 7. AI Diagnosis & Reporting (Step 7) [Completed]                       │
+├────────────────────────────────────────────────────────────────────────┤
+│ 8. Benchmarking & Evaluation (Step 8) [Completed]                      │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ HTTP Requests
                                     ▼
@@ -77,7 +79,7 @@ Unlike standard fuzzers or black-box scanners that blindly spray endpoints with 
 | **Step 5** | Bug Detection Oracles & BOLA Verification | `agent/oracles.py` | **Completed** | 14 tests passed |
 | **Step 6** | Flakiness Check, Replay & Test Minimization | `agent/verifier.py`, `agent/minimizer.py` | **Completed** | 11 tests passed |
 | **Step 7** | LLM Diagnosis, Targeted Checks & Markdown/JSON Reports | `agent/reporter.py` | **Completed** | 11 tests passed |
-| **Step 8** | Benchmarking & Schemathesis Baseline Comparisons | `benchmarks/` | *Next Up* | Pending |
+| **Step 8** | Benchmarking & Schemathesis Baseline Comparisons | `benchmarks/` | **Completed** | 3 tests passed (94 total) |
 
 ---
 
@@ -158,3 +160,12 @@ Unlike standard fuzzers or black-box scanners that blindly spray endpoints with 
   - Generates copy-pasteable Windows PowerShell commands using `Invoke-RestMethod`.
   - Generates standalone runnable pytest files (`reports/test_reproduce_bola.py`) that verify defects independently of the main agent framework.
 
+### 5.9 Benchmarking & Evaluation (`benchmarks/evaluator.py`)
+- **Automated Benchmarking Pipeline (`BenchmarkEvaluator`):**
+  - Executes comprehensive evaluations of the Autonomous Agent and Schemathesis baseline against identical API targets under controlled conditions.
+  - Measures empirical metrics: total requests sent, wall-clock execution time, functional/schema/BOLA bugs detected, true positive vs false positive rates, delta-debugging test sequence minimization ratios, reproduction viability, and LLM costs.
+- **Fair Baseline Comparison with Schemathesis 4.x:**
+  - Evaluates property-based fuzzing capabilities vs stateful multi-step dependency-aware agent execution.
+  - Documents structural limitations: Schemathesis checks isolated single endpoints against schema and status code constraints without multi-user context or stateful data chaining, explaining why standard property fuzzers miss BOLA vulnerabilities.
+- **Persistent Structured Benchmarks:**
+  - Saves full empirical benchmark telemetry to structured JSON (`benchmarks/benchmark_results.json`), CSV summary (`benchmarks/benchmark_results.csv`), and human-readable Markdown (`benchmarks/BENCHMARK_REPORT.md`).
