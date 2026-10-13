@@ -19,7 +19,8 @@ from typing import Any, Dict
 import pytest
 from unittest.mock import MagicMock, patch
 
-from agent.oracles import BugFinding
+from agent.executor import RequestExecutor
+from agent.oracles import BugFinding, BugDetector
 from agent.verifier import VerificationResult
 from agent.minimizer import MinimizationResult, TestSequence, TestSequenceStep
 from agent.reporter import (

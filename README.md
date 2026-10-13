@@ -19,7 +19,7 @@ An AI-assisted system that automatically inspects, tests, and discovers bugs and
 - [x] **Step 4: Automatic Test Generation & Dependency Handling** (Schema synthesizer, mutation generator, NetworkX dependency graph, sequence runner, Schemathesis baseline)
 - [x] **Step 5: Bug Detection & Security Oracles** (Server error oracle, schema conformance validator, BOLA cross-user security oracle)
 - [x] **Step 6: Verification & Test Minimization** (Clean replay bug verifier, flakiness detection, delta-debugging test sequence minimizer)
-- [ ] **Step 7: AI-Assisted Diagnosis & Reporting**
+- [x] **Step 7: AI-Assisted Diagnosis & Reporting** (Root cause hypothesis, code remediation, Markdown/JSON reports, standalone reproductions)
 - [ ] **Step 8: Evaluation & Benchmark Comparisons**
 
 ---
@@ -41,7 +41,12 @@ api_testing/
 │   ├── test_generator.py       # Normal/invalid test synthesis & sequence runner
 │   ├── oracles.py              # Bug detection oracles (5xx, schema, BOLA security)
 │   ├── verifier.py             # Clean-state replay & flakiness classification
-│   └── minimizer.py            # Delta-debugging sequence & payload minimizer
+│   ├── minimizer.py            # Delta-debugging sequence & payload minimizer
+│   └── reporter.py             # AI/Rule-based diagnoser, Markdown/JSON reporter & reproductions
+├── reports/                    # Generated Markdown, JSON & reproduction files
+│   ├── <finding_id>_<type>.md  # Comprehensive GitHub Flavored Markdown report
+│   ├── <finding_id>_<type>.json# Structured machine-readable JSON finding dump
+│   └── test_reproduce_bola.py  # Standalone runnable pytest reproduction test
 ├── sample_api/
 │   ├── __init__.py             # Sample API package
 │   ├── config.py               # Settings (Host, Port, Reset toggle)
@@ -59,7 +64,8 @@ api_testing/
     ├── test_dependency_graph.py# 6 tests verifying NetworkX graph & sequencing
     ├── test_generator.py       # 10 tests verifying normal/invalid generation & sequences
     ├── test_oracles.py         # 14 tests verifying server errors, schema violations & BOLA
-    └── test_verifier_minimizer.py # 11 tests verifying verifier, delta debugging & live BOLA
+    ├── test_verifier_minimizer.py # 11 tests verifying verifier, delta debugging & live BOLA
+    └── test_reporter.py        # 11 tests verifying AI diagnosis, reports & reproductions
 ```
 
 ---
@@ -126,9 +132,37 @@ The agent implements three deterministic behavioral oracles that inspect HTTP te
    - Applies Delta Debugging (1-minimal deletion pass) on failing multi-step request sequences.
    - Removes unnecessary intermediate requests (e.g. redundant health checks).
    - Prunes non-essential fields from JSON request bodies (e.g. optional notes).
-   - Preserves core data dependencies and the exact target vulnerability.
    - Computes reduction metrics:
      $$\text{Reduction Ratio} = 1 - \left(\frac{\text{Minimized Requests}}{\text{Original Requests}}\right)$$
+
+---
+
+## Stage 7: AI-Assisted Diagnosis & Reporting (`agent/reporter.py`)
+
+1. **AI-Assisted Bug Diagnosis:**
+   - Evaluates confirmed and minimized bug findings against black-box observations.
+   - Formulates clear root-cause hypotheses (explicitly flagged as hypotheses, never claiming to inspect unprovided source code).
+   - Provides supporting evidence, recommended verification steps, remaining uncertainties, and actionable code fixes.
+   - **Remediation for BOLA:** Suggests adding an object ownership check in `sample_api/main.py`:
+     ```python
+     if order["user_id"] != current_user["user_id"]:
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+             detail="Forbidden: You do not have permission to access this order."
+         )
+     ```
+
+2. **Configurable LLM Client & Graceful Fallback:**
+   - Supported via `LLMDiagnoser`: reads `LLM_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY` from environment variables.
+   - If no API key is configured or upon network/timeout errors, automatically falls back to `RuleBasedDiagnoser` without failing or claiming an AI call was performed.
+
+3. **Dual-Format Professional Bug Reports:**
+   - Saves comprehensive Markdown (`.md`) and JSON (`.json`) reports to `reports/`.
+   - Redacts all sensitive authorization tokens, passwords, and secrets (`[REDACTED]`).
+
+4. **Standalone Reproductions:**
+   - **Windows PowerShell:** Injects copy-pasteable `Invoke-RestMethod` commands replicating Alice's order creation and Bob's unauthorized access.
+   - **Pytest:** Generates standalone runnable test `reports/test_reproduce_bola.py`.
 
 ---
 
@@ -151,21 +185,43 @@ python -m uvicorn sample_api.main:app --host 127.0.0.1 --port 8000 --reload
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 
-### 3. Run Bug Verification (Terminal 2)
+### 3. Optional: Configure LLM Diagnosis (Terminal 2)
 
 ```powershell
-python -m agent.verifier http://127.0.0.1:8000
+# Optional: Set an OpenAI or compatible key (otherwise uses deterministic rule-based fallback)
+$env:LLM_API_KEY = "your-api-key-here"
 ```
 
-### 4. Run Test Minimization (Terminal 2)
+### 4. Run End-to-End Bug Reporting Pipeline (Terminal 2)
 
 ```powershell
+python -m agent.reporter http://127.0.0.1:8000
+```
+
+Outputs:
+- Markdown report: `reports/finding-xxxx_bola_violation.md`
+- JSON report: `reports/finding-xxxx_bola_violation.json`
+- Pytest reproduction: `reports/test_reproduce_bola.py`
+
+### 5. Run the Standalone Pytest Reproduction
+
+```powershell
+pytest reports/test_reproduce_bola.py -v
+```
+
+### 6. Run Bug Verification & Minimization Manually
+
+```powershell
+# Verification:
+python -m agent.verifier http://127.0.0.1:8000
+
+# Minimization:
 python -m agent.minimizer http://127.0.0.1:8000
 ```
 
-### 5. Run All Automated Tests
+### 7. Run All Automated Tests
 
-Run all 79 automated tests across all 6 stages:
+Run all 90 automated tests across all 7 stages:
 
 ```powershell
 pytest -v
@@ -174,6 +230,9 @@ pytest -v
 Or run tests by module:
 
 ```powershell
+# Step 7 AI Diagnosis and Reporting (11 tests)
+pytest tests/test_reporter.py -v
+
 # Step 6 Verification and Minimization (11 tests)
 pytest tests/test_verifier_minimizer.py -v
 

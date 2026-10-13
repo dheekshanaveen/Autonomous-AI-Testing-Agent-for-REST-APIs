@@ -20,6 +20,8 @@ This document records the foundational and ongoing architectural decisions made 
 12. [ADR-012: Deterministic BOLA Cross-User Security Oracle](#adr-012-deterministic-bola-cross-user-security-oracle)
 13. [ADR-013: Deterministic Replay Bug Verification & Flakiness Classification](#adr-013-deterministic-replay-bug-verification--flakiness-classification)
 14. [ADR-014: 1-Minimal Sequence & Payload Delta Debugging](#adr-014-1-minimal-sequence--payload-delta-debugging)
+15. [ADR-015: AI Diagnosis with Graceful Rule-Based Fallback Architecture](#adr-015-ai-diagnosis-with-graceful-rule-based-fallback-architecture)
+16. [ADR-016: Dual-Format Reporting & Standalone Reproduction Suite](#adr-016-dual-format-reporting--standalone-reproduction-suite)
 
 ---
 
@@ -148,5 +150,29 @@ This document records the foundational and ongoing architectural decisions made 
   3. **Dependency Protection:** If removing a prerequisite step breaks a downstream variable binding (e.g. missing auth token or order ID), the candidate is rejected.
   4. **Signature Caching:** Computes deterministic hashes of candidate sequences to avoid duplicate executions.
 - **Consequence:** Produces concise reproduction cases (e.g., reducing a 10-request sequence to 4 essential steps with a 60% reduction ratio) while preserving the exact failure mode.
+
+---
+
+### ADR-015: AI Diagnosis with Graceful Rule-Based Fallback Architecture
+- **Status:** Accepted (Step 7)
+- **Context:** Developers reviewing discovered vulnerabilities need to know *what went wrong*, *why it happened*, *how to confirm it*, and *how to fix it*. However, relying solely on an external cloud LLM introduces failure points (missing API keys, rate limits, network outages) and may lead to hallucinations if the model claims to have inspected internal server source code it was never given.
+- **Decision:** `agent/reporter.py` separates diagnosis into a dual-engine architecture:
+  1. **Strictly Classified Hypotheses:** All diagnoses are explicitly labeled as hypotheses derived from black-box observations, accompanied by supporting factual evidence, recommended additional checks, and remaining uncertainties.
+  2. **Configurable LLM Client (`LLMDiagnoser`):** Uses environment variables (`LLM_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`) and standard OpenAI-compatible JSON mode endpoints.
+  3. **Zero-Key Rule-Based Fallback (`RuleBasedDiagnoser`):** When no API key is present or network errors occur, the agent falls back immediately to deterministic heuristic diagnoses without crashing or claiming an AI call occurred.
+  4. **Targeted Code Remediation:** For BOLA vulnerabilities, generates exact ownership check code matching `sample_api/main.py` (`order["user_id"] != current_user["user_id"]`).
+- **Consequence:** High reliability across offline CI environments and production deployments without hardcoded secrets or false claims.
+
+---
+
+### ADR-016: Dual-Format Reporting & Standalone Reproduction Suite
+- **Status:** Accepted (Step 7)
+- **Context:** Triage workflows require both human-friendly documentation (for developer pull requests and issue trackers) and machine-readable data (for automated security pipelines). Furthermore, developers must be able to reproduce the bug without learning the agent's internal architecture.
+- **Decision:**
+  1. **Dual Export Formats:** `BugReport` serializes simultaneously to GitHub Flavored Markdown (`.md`) and structured JSON (`.json`) into the `reports/` directory.
+  2. **Standalone Pytest Reproduction (`test_reproduce_bola.py`):** Automatically writes an isolated test script that depends only on `httpx` and `pytest`, allowing developers to verify and fix the vulnerability independently.
+  3. **Windows PowerShell / curl Commands:** Injects copy-pasteable PowerShell commands using `Invoke-RestMethod` to execute Alice's order creation and Bob's unauthorized access.
+  4. **Mandatory Redaction:** All reports and evidence dumps strictly scrub sensitive auth tokens and passwords to prevent credential leakage.
+- **Consequence:** Immediate, frictionless triage experience for developers with reproducible evidence.
 
 

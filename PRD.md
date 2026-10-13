@@ -76,8 +76,8 @@ Unlike standard fuzzers or black-box scanners that blindly spray endpoints with 
 | **Step 4** | Automatic Test Generator, Dependency Graph & Sequences | `agent/dependency_graph.py`, `agent/test_generator.py` | **Completed** | 16 tests passed |
 | **Step 5** | Bug Detection Oracles & BOLA Verification | `agent/oracles.py` | **Completed** | 14 tests passed |
 | **Step 6** | Flakiness Check, Replay & Test Minimization | `agent/verifier.py`, `agent/minimizer.py` | **Completed** | 11 tests passed |
-| **Step 7** | LLM Diagnosis, Targeted Checks & Markdown/JSON Reports | `agent/reporter.py` | *Next Up* | Pending |
-| **Step 8** | Benchmarking & Schemathesis Baseline Comparisons | `benchmarks/` | *Planned* | Pending |
+| **Step 7** | LLM Diagnosis, Targeted Checks & Markdown/JSON Reports | `agent/reporter.py` | **Completed** | 11 tests passed |
+| **Step 8** | Benchmarking & Schemathesis Baseline Comparisons | `benchmarks/` | *Next Up* | Pending |
 
 ---
 
@@ -141,4 +141,20 @@ Unlike standard fuzzers or black-box scanners that blindly spray endpoints with 
   - **Payload Field Delta Debugging:** Prunes optional, extraneous keys from JSON request bodies while preserving schema requirements.
   - **Bug Invariance:** Rejects candidate sequences if the exact target vulnerability (e.g. BOLA violation) is lost or if prerequisite data dependencies fail.
   - **Reduction Metric:** Calculates reduction ratio $1 - (\text{minimized} / \text{original})$. (e.g., reduces a 10-request noisy BOLA sequence to 4 essential requests, achieving a 60% reduction).
+
+### 5.8 AI-Assisted Bug Diagnosis & Reporting (`agent/reporter.py`)
+- **Structured AI Diagnosis (`AIDiagnosis`):**
+  - Formulates plain-language root cause explanations clearly categorized as hypotheses (`hypothesis`), not confirmed facts.
+  - Documents supporting observations (`supporting_evidence`), recommended verifications (`additional_checks`), and explicit limitations/unknowns (`uncertainties`).
+  - Proposes actionable code remediation snippets matching actual project structure (e.g., checking `order["user_id"] != current_user["user_id"]` in `sample_api/main.py`).
+- **Configurable LLM Client with Deterministic Fallback:**
+  - `LLMDiagnoser` supports external providers (`LLM_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
+  - Never hardcodes secrets; gracefully falls back to `RuleBasedDiagnoser` if no key is configured or upon network/timeout errors, noting the exact source without pretending an AI model was called.
+- **Dual-Format Professional Bug Reports (`BugReport`):**
+  - Exports comprehensive Markdown (`.md`) and machine-readable JSON (`.json`) files saved in `reports/`.
+  - Includes executive summaries, verification metrics (Step 6), original vs minimized sequence reduction ratios, and full evidence dumps.
+  - Guarantees strict redaction of sensitive credentials (`Authorization`, `tokens`, `passwords`).
+- **Standalone Reproductions:**
+  - Generates copy-pasteable Windows PowerShell commands using `Invoke-RestMethod`.
+  - Generates standalone runnable pytest files (`reports/test_reproduce_bola.py`) that verify defects independently of the main agent framework.
 
