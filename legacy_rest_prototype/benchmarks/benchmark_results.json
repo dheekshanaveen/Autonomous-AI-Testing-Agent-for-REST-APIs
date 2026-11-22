@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-10-13T07:29:35.361838+00:00",
+  "target_url": "http://127.0.0.1:8000",
+  "agent_result": {
+    "tool_name": "Autonomous AI Testing Agent",
+    "target_url": "http://127.0.0.1:8000",
+    "duration_seconds": 107.32,
+    "total_http_requests": 198,
+    "tests_generated": 16,
+    "tests_passed": 9,
+    "tests_failed": 7,
+    "bugs_detected": 1,
+    "true_positives": 1,
+    "false_positives": 0,
+    "detected_bug_types": [
+      "BOLA_VIOLATION"
+    ],
+    "is_verified_reproducible": true,
+    "minimization_original_requests": 10,
+    "minimization_reduced_requests": 4,
+    "minimization_reduction_percentage": 60.0,
+    "report_generated": true,
+    "standalone_reproduction_runnable": true,
+    "llm_calls_count": 0,
+    "llm_cost_usd": 0.0,
+    "diagnosis_source": "rule_based_fallback (no LLM API key configured)"
+  },
+  "schemathesis_result": {
+    "tool_name": "Schemathesis (Baseline Fuzzer v4.31.0)",
+    "target_url": "http://127.0.0.1:8000",
+    "duration_seconds": 1.64,
+    "total_http_requests": 5,
+    "tests_generated": 5,
+    "tests_passed": 4,
+    "tests_failed": 1,
+    "server_crashes_5xx": 0,
+    "schema_violations": 0,
+    "bola_vulnerabilities_detected": 0,
+    "can_detect_cross_user_bola": false,
+    "reasons_bola_missed": [
+      "Schemathesis fuzzes single API endpoints independently and does not maintain dual-user state.",
+      "Lacks cross-user authorization oracle (does not compare user Alice resource owner vs user Bob accessor).",
+      "Returns HTTP 200 on GET /orders/{order_id} which matches documented 200 response schema, so Schemathesis treats it as a success."
+    ]
+  },
+  "comparison_summary": {
+    "bola_detected_by_agent": true,
+    "bola_detected_by_schemathesis": false,
+    "agent_minimization_reduction": "60.0%",
+    "agent_reproduction_standalone": true,
+    "agent_diagnosis_source": "rule_based_fallback (no LLM API key configured)",
+    "key_distinction": "Schemathesis excels at rapid fuzzing for 5xx server crashes and schema contract mismatches. However, Schemathesis cannot detect BOLA (OWASP API1:2023) because the vulnerable endpoint returns HTTP 200 OK with valid schema, requiring multi-user session management and object ownership oracles which only the Autonomous AI Testing Agent provides."
+  }
+}

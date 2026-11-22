@@ -1,0 +1,5 @@
+[project]
+name = "unsupported_cloud_service"
+version = "0.0.1"
+description = "Service with external missing native drivers"
+

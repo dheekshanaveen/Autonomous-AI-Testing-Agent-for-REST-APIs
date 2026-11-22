@@ -1,24 +1,45 @@
-"""Pytest configuration and shared fixtures."""
+"""Pytest fixtures for testing agent."""
 
+import shutil
+import tempfile
+from pathlib import Path
 import pytest
-from fastapi.testclient import TestClient
-
-from sample_api.main import app
-from sample_api.database import reset_db
-from sample_api.auth import reset_auth
-
-
-@pytest.fixture(autouse=True)
-def clean_database():
-    """Ensure every test runs against a clean, isolated database and session state."""
-    reset_db()
-    reset_auth()
-    yield
-    reset_db()
-    reset_auth()
 
 
 @pytest.fixture
-def client():
-    """FastAPI test client fixture."""
-    return TestClient(app)
+def temp_dir():
+    """Create a temporary directory cleaned up after test."""
+    temp_path = Path(tempfile.mkdtemp(prefix="agent_test_"))
+    yield temp_path
+    shutil.rmtree(temp_path, ignore_errors=True)
+
+
+@pytest.fixture
+def sample_python_repo_path():
+    """Path to sample python benchmark repository."""
+    return Path(__file__).resolve().parent.parent / "benchmarks" / "sample_python_repo"
+
+
+@pytest.fixture
+def sample_python_fixed_path():
+    """Path to sample python fixed repository."""
+    return Path(__file__).resolve().parent.parent / "benchmarks" / "sample_python_repo_fixed"
+
+
+@pytest.fixture
+def sample_js_repo_path():
+    """Path to sample javascript benchmark repository."""
+    return Path(__file__).resolve().parent.parent / "benchmarks" / "sample_js_repo"
+
+
+@pytest.fixture
+def sample_js_fixed_path():
+    """Path to sample javascript fixed repository."""
+    return Path(__file__).resolve().parent.parent / "benchmarks" / "sample_js_repo_fixed"
+
+
+@pytest.fixture
+def sample_unsupported_repo_path():
+    """Path to sample unsupported repository."""
+    return Path(__file__).resolve().parent.parent / "benchmarks" / "sample_unsupported_repo"
+

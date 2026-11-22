@@ -1,0 +1,6 @@
+[project]
+name = "stream_metrics"
+version = "0.1.0"
+description = "Stream metrics aggregation and processing engine"
+requires-python = ">=3.9"
+

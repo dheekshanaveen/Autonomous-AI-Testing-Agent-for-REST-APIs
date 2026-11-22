@@ -1,1 +1,2 @@
-"""Automated tests for the sample API and future testing agent."""
+"""Test package for Local Repository Testing Agent."""
+

@@ -1,54 +1,170 @@
 {
-  "timestamp": "2026-10-13T07:29:35.361838+00:00",
-  "target_url": "http://127.0.0.1:8000",
-  "agent_result": {
-    "tool_name": "Autonomous AI Testing Agent",
-    "target_url": "http://127.0.0.1:8000",
-    "duration_seconds": 107.32,
-    "total_http_requests": 198,
-    "tests_generated": 16,
-    "tests_passed": 9,
-    "tests_failed": 7,
-    "bugs_detected": 1,
-    "true_positives": 1,
-    "false_positives": 0,
-    "detected_bug_types": [
-      "BOLA_VIOLATION"
-    ],
-    "is_verified_reproducible": true,
-    "minimization_original_requests": 10,
-    "minimization_reduced_requests": 4,
-    "minimization_reduction_percentage": 60.0,
-    "report_generated": true,
-    "standalone_reproduction_runnable": true,
-    "llm_calls_count": 0,
-    "llm_cost_usd": 0.0,
-    "diagnosis_source": "rule_based_fallback (no LLM API key configured)"
-  },
-  "schemathesis_result": {
-    "tool_name": "Schemathesis (Baseline Fuzzer v4.31.0)",
-    "target_url": "http://127.0.0.1:8000",
-    "duration_seconds": 1.64,
-    "total_http_requests": 5,
-    "tests_generated": 5,
-    "tests_passed": 4,
-    "tests_failed": 1,
-    "server_crashes_5xx": 0,
-    "schema_violations": 0,
-    "bola_vulnerabilities_detected": 0,
-    "can_detect_cross_user_bola": false,
-    "reasons_bola_missed": [
-      "Schemathesis fuzzes single API endpoints independently and does not maintain dual-user state.",
-      "Lacks cross-user authorization oracle (does not compare user Alice resource owner vs user Bob accessor).",
-      "Returns HTTP 200 on GET /orders/{order_id} which matches documented 200 response schema, so Schemathesis treats it as a success."
-    ]
-  },
-  "comparison_summary": {
-    "bola_detected_by_agent": true,
-    "bola_detected_by_schemathesis": false,
-    "agent_minimization_reduction": "60.0%",
-    "agent_reproduction_standalone": true,
-    "agent_diagnosis_source": "rule_based_fallback (no LLM API key configured)",
-    "key_distinction": "Schemathesis excels at rapid fuzzing for 5xx server crashes and schema contract mismatches. However, Schemathesis cannot detect BOLA (OWASP API1:2023) because the vulnerable endpoint returns HTTP 200 OK with valid schema, requiring multi-user session management and object ownership oracles which only the Autonomous AI Testing Agent provides."
-  }
+  "evaluation_timestamp": "2026-11-16T11:19:55Z",
+  "total_evaluation_seconds": 44.5,
+  "total_targets": 3,
+  "total_verified_failures": 14,
+  "total_false_alarms": 0,
+  "all_source_folders_untouched": true,
+  "targets": [
+    {
+      "target_name": "Python Stream Metrics (Faulty)",
+      "repo_path": "C:\\Users\\Shashi kiran\\Grinding\\mini_project\\benchmarks\\sample_python_repo",
+      "language": "python",
+      "setup_success": true,
+      "source_files": 4,
+      "symbols_analyzed": 7,
+      "candidates_generated": 22,
+      "runnable_tests_executed": 22,
+      "verified_failures": 11,
+      "leads": 0,
+      "setup_gaps": 0,
+      "false_alarms": 0,
+      "replay_rate_pct": 100.0,
+      "scan_duration_seconds": 14.63,
+      "time_per_finding_seconds": 1.33,
+      "source_folder_untouched": true,
+      "fixes_confirmed": true,
+      "verified_failures_details": [
+        {
+          "id": "finding-8652fc94",
+          "symbol": "compute_moving_average",
+          "category": "ast_heuristic",
+          "observed": "ZeroDivisionError: division by zero",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_compute_moving_average_cand-61f37648.py -v"
+        },
+        {
+          "id": "finding-6d13f32e",
+          "symbol": "compute_moving_average",
+          "category": "boundary_value",
+          "observed": "ZeroDivisionError: division by zero",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_compute_moving_average_cand-0a344d2f.py -v"
+        },
+        {
+          "id": "finding-9a4bc8c4",
+          "symbol": "compute_moving_average",
+          "category": "boundary_value",
+          "observed": "ZeroDivisionError: division by zero",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_compute_moving_average_cand-68faf498.py -v"
+        },
+        {
+          "id": "finding-cf7ccf40",
+          "symbol": "calculate_ratio",
+          "category": "ast_heuristic",
+          "observed": "ZeroDivisionError: division by zero",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_calculate_ratio_cand-d2c38fa8.py -v"
+        },
+        {
+          "id": "finding-16aae5cb",
+          "symbol": "calculate_ratio",
+          "category": "contract_violation",
+          "observed": "AssertionError: Expected documented exception was not raised",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_calculate_ratio_cand-088f57e8.py -v"
+        },
+        {
+          "id": "finding-22931198",
+          "symbol": "calculate_ratio",
+          "category": "boundary_value",
+          "observed": "ZeroDivisionError: division by zero",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_calculate_ratio_cand-483bbdbe.py -v"
+        },
+        {
+          "id": "finding-97a53c20",
+          "symbol": "calculate_ratio",
+          "category": "boundary_value",
+          "observed": "ZeroDivisionError: division by zero",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_calculate_ratio_cand-cd9eeef1.py -v"
+        },
+        {
+          "id": "finding-4b4f1ef2",
+          "symbol": "transform_records",
+          "category": "boundary_value",
+          "observed": "IndexError: list index out of range",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_transform_records_cand-215c3983.py -v"
+        },
+        {
+          "id": "finding-eb3f44d9",
+          "symbol": "transform_records",
+          "category": "boundary_value",
+          "observed": "IndexError: list index out of range",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_transform_records_cand-0e92014e.py -v"
+        },
+        {
+          "id": "finding-f0c31699",
+          "symbol": "StreamSession",
+          "category": "state_transition",
+          "observed": "IndexError: pop from empty list",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_StreamSession_cand-aca031ba.py -v"
+        },
+        {
+          "id": "finding-b7983560",
+          "symbol": "StreamSession",
+          "category": "state_transition",
+          "observed": "IndexError: pop from empty list",
+          "replay_command": "pytest C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_python_repo/generated_tests/test_regress_StreamSession_cand-38678bcd.py -v"
+        }
+      ]
+    },
+    {
+      "target_name": "JavaScript Token Matrix (Faulty)",
+      "repo_path": "C:\\Users\\Shashi kiran\\Grinding\\mini_project\\benchmarks\\sample_js_repo",
+      "language": "javascript",
+      "setup_success": true,
+      "source_files": 2,
+      "symbols_analyzed": 3,
+      "candidates_generated": 13,
+      "runnable_tests_executed": 13,
+      "verified_failures": 3,
+      "leads": 0,
+      "setup_gaps": 0,
+      "false_alarms": 0,
+      "replay_rate_pct": 100.0,
+      "scan_duration_seconds": 1.76,
+      "time_per_finding_seconds": 0.59,
+      "source_folder_untouched": true,
+      "fixes_confirmed": true,
+      "verified_failures_details": [
+        {
+          "id": "finding-9d132f84",
+          "symbol": "extractTokens",
+          "category": "malformed_input",
+          "observed": "TypeError: Cannot read properties of null (reading 'split')",
+          "replay_command": "node --test C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_js_repo/generated_tests/test_regress_extractTokens_cand-3fd94971.test.mjs"
+        },
+        {
+          "id": "finding-0774137a",
+          "symbol": "extractTokens",
+          "category": "malformed_input",
+          "observed": "TypeError: Cannot read properties of null (reading 'split')",
+          "replay_command": "node --test C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_js_repo/generated_tests/test_regress_extractTokens_cand-c482a29c.test.mjs"
+        },
+        {
+          "id": "finding-999f35d6",
+          "symbol": "normalizeWeight",
+          "category": "contract_violation",
+          "observed": "Test failed",
+          "replay_command": "node --test C:/Users/Shashi kiran/Grinding/mini_project/reports/evaluation_artifacts/sample_js_repo/generated_tests/test_regress_normalizeWeight_cand-e81cb955.test.mjs"
+        }
+      ]
+    },
+    {
+      "target_name": "Unsupported Cloud Service (Missing Dependency)",
+      "repo_path": "C:\\Users\\Shashi kiran\\Grinding\\mini_project\\benchmarks\\sample_unsupported_repo",
+      "language": "python",
+      "setup_success": false,
+      "source_files": 2,
+      "symbols_analyzed": 1,
+      "candidates_generated": 5,
+      "runnable_tests_executed": 5,
+      "verified_failures": 0,
+      "leads": 0,
+      "setup_gaps": 5,
+      "false_alarms": 0,
+      "replay_rate_pct": 100.0,
+      "scan_duration_seconds": 2.25,
+      "time_per_finding_seconds": 2.25,
+      "source_folder_untouched": true,
+      "fixes_confirmed": null,
+      "verified_failures_details": []
+    }
+  ]
 }

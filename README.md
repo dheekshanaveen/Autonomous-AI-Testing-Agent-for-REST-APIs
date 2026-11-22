@@ -1,277 +1,141 @@
-# Autonomous AI Testing Agent for REST APIs
+# Local Repository Testing Agent
 
-An AI-assisted system that automatically inspects, tests, and discovers bugs and security vulnerabilities (such as Broken Object Level Authorization) in REST APIs.
+An autonomous, deterministic agent that inspects a **local repository folder**, derives edge cases and unexpected input sequences, generates focused standalone regression tests, executes and replays them in an isolated environment, and delivers honest reports distinguishing verified failures from unverified leads and setup gaps.
 
----
-
-## Documentation
-
-- **[PRD.md](PRD.md):** Complete Product Requirements Document covering project goals, modular architecture, and stage-by-stage implementation milestones.
-- **[DECISIONS.md](DECISIONS.md):** Architectural Decision Records (ADRs) tracking foundational design and technical decisions.
+Supported language ecosystems: **Python** and **JavaScript/TypeScript**.
 
 ---
 
-## Roadmap Progress
+## Key Highlights & Guarantees
 
-- [x] **Step 1: Controlled Sample API** (FastAPI shopping API with auth, orders, and intentional BOLA bug)
-- [x] **Step 2: OpenAPI Specification Reader** (Structured specification parser, reference resolver, and validator)
-- [x] **Step 3: Request Executor** (HTTP client with path substitution, Bearer auth, redaction, and tracing)
-- [x] **Step 4: Automatic Test Generation & Dependency Handling** (Schema synthesizer, mutation generator, NetworkX dependency graph, sequence runner, Schemathesis baseline)
-- [x] **Step 5: Bug Detection & Security Oracles** (Server error oracle, schema conformance validator, BOLA cross-user security oracle)
-- [x] **Step 6: Verification & Test Minimization** (Clean replay bug verifier, flakiness detection, delta-debugging test sequence minimizer)
-- [x] **Step 7: AI-Assisted Diagnosis & Reporting** (Root cause hypothesis, code remediation, Markdown/JSON reports, standalone reproductions)
-- [x] **Step 8: Evaluation & Benchmark Comparisons** (Automated benchmarking suite, empirical Schemathesis comparison, JSON/CSV/Markdown reports)
+1. **Strict Folder Immutability:** Pre- and post-scan SHA-256 integrity verification guarantees the target repository remains 100% untouched. All generated tests and reports are written to separate output directories.
+2. **Two-Phase Deterministic Replay:** A finding is classified as a **Verified Failure** only if the generated test observes a failure on run 1 AND an independent replay run confirms and reproduces it. Flaky failures remain **Leads**.
+3. **Honest Reporting:** Zero false alarms. Missing external dependencies or network services are reported as **Setup Gaps** rather than spurious bugs.
+4. **Fix Verification:** Built-in cross-revision verification (`--verify-fix`) proves that generated regression tests fail on buggy code and pass on corrected code.
+5. **Completely Local & Zero Cost:** Works deterministically without requiring paid AI services or external SaaS accounts.
 
 ---
 
-## Project Structure
+## Repository Documentation
 
-```text
-api_testing/
-├── PRD.md                      # Product Requirements Document
-├── DECISIONS.md                # Architectural Decision Records (ADR)
-├── README.md                   # Quickstart and execution guide
-├── requirements.txt            # Python dependencies
-├── pytest.ini                  # Pytest configuration
-├── agent/
-│   ├── __init__.py             # Agent package initializer
-│   ├── spec_reader.py          # OpenAPI 3.x parser, $ref resolver & models
-│   ├── executor.py             # HTTP request executor, redaction & trace recorder
-│   ├── dependency_graph.py     # NetworkX dependency graph & sequence planner
-│   ├── test_generator.py       # Normal/invalid test synthesis & sequence runner
-│   ├── oracles.py              # Bug detection oracles (5xx, schema, BOLA security)
-│   ├── verifier.py             # Clean-state replay & flakiness classification
-│   ├── minimizer.py            # Delta-debugging sequence & payload minimizer
-│   └── reporter.py             # AI/Rule-based diagnoser, Markdown/JSON reporter & reproductions
-├── benchmarks/                 # Step 8 Benchmark suite & empirical results
-│   ├── __init__.py             # Benchmarks package initializer
-│   ├── evaluator.py            # Automated evaluator for Agent vs Schemathesis
-│   ├── benchmark_results.json  # Structured machine-readable benchmark telemetry
-│   ├── benchmark_results.csv   # Tabular comparison metrics
-│   └── BENCHMARK_REPORT.md     # Comprehensive human-readable benchmark report
-├── reports/                    # Generated Markdown, JSON & reproduction files
-│   ├── <finding_id>_<type>.md  # Comprehensive GitHub Flavored Markdown report
-│   ├── <finding_id>_<type>.json# Structured machine-readable JSON finding dump
-│   └── test_reproduce_bola.py  # Standalone runnable pytest reproduction test
-├── sample_api/
-│   ├── __init__.py             # Sample API package
-│   ├── config.py               # Settings (Host, Port, Reset toggle)
-│   ├── schemas.py              # Pydantic request and response models
-│   ├── database.py             # In-memory storage & deterministic reset
-│   ├── auth.py                 # Demo credentials & Bearer token management
-│   ├── main.py                 # FastAPI application and endpoints
-│   └── openapi.json            # Exported OpenAPI 3.1 specification
-└── tests/
-    ├── __init__.py             # Tests package
-    ├── conftest.py             # Shared fixtures (clean state, TestClient)
-    ├── test_sample_api.py      # 9 tests verifying sample API & intentional BOLA bug
-    ├── test_spec_reader.py     # 16 tests verifying spec reader, parsing, $ref, errors
-    ├── test_executor.py        # 13 tests verifying request execution, auth, redaction
-    ├── test_dependency_graph.py# 6 tests verifying NetworkX graph & sequencing
-    ├── test_generator.py       # 10 tests verifying normal/invalid generation & sequences
-    ├── test_oracles.py         # 14 tests verifying server errors, schema violations & BOLA
-    ├── test_verifier_minimizer.py # 11 tests verifying verifier, delta debugging & live BOLA
-    ├── test_reporter.py        # 11 tests verifying AI diagnosis, reports & reproductions
-    └── test_benchmarks.py      # 3 tests verifying benchmark evaluator & Schemathesis
+- [How to Run](HOW_TO_RUN.md) — Step-by-step setup and execution guide.
+- [Project Plan](PROJECT_PLAN.md) — Goal, build order, and showcase standards.
+- [Product Requirements (PRD)](PRD.md) — Problem statement, requirements, and acceptance criteria.
+- [Component Routing](ROUTING.md) — Architectural pipeline flow from intake to reporting.
+- [Decisions](DECISIONS.md) — Architectural decision log.
+- [Assumptions](ASSUMPTIONS.md) — Working assumptions and empirical checks.
+- [Benchmark Report](benchmarks/BENCHMARK_REPORT.md) — Empirical showcase evaluation results.
+
+---
+
+## Architecture Pipeline
+
+```
+[Local Folder Intake]
+        │ (Validates path, enforces read-only immutability)
+        ▼
+[Project Inventory]
+        │ (Scans manifests, AST, docstrings, type hints, test suites)
+        ▼
+[Candidate Analysis]
+        │ (Derives boundary values, malformed inputs, state transitions, contracts)
+        ▼
+[Test Generator]
+        │ (Generates standalone pytest or node:test regression files outside repo)
+        ▼
+[Isolated Runner]
+        │ (Executes in sandboxed subprocess with strict resource/timeout bounding)
+        ▼
+[Replay & Classifier]
+        │ (Two-phase replay verification: verified failure vs lead vs setup gap)
+        ▼
+[Report Writer]
+        │ (Produces markdown, JSON, and reproduction CLI commands)
+        ▼
+      [User]
 ```
 
 ---
 
-## Stage 4: Test Generator & Dependency Handling
+## Installation & Setup
 
-### 1. Automatic Test Generator (`agent/test_generator.py`)
-- **Normal Tests:** Automatically synthesizes valid payloads matching OpenAPI schema types, enums, examples, and constraints, expecting documented 2xx status codes.
-- **Invalid-Input Tests:** Systematically applies mutations:
-  - Omits required fields (expecting 400 or 422).
-  - Injects type mismatches, e.g. sending text for integer quantities (expecting 400 or 422).
-  - Tests boundary violations, e.g. negative prices (expecting 400 or 422).
-  - Tests unauthenticated requests on secured endpoints (expecting 401).
+### Prerequisites
 
-### 2. Dependency Graph (`agent/dependency_graph.py`)
-- Uses NetworkX directed graphs (`DiGraph`) to model producer-consumer relationships:
-  - Links operations requiring authentication to `POST /auth/login` (source: `access_token` -> target: `auth_token`).
-  - Links resource consumers (e.g. `GET /orders/{order_id}`) to creators (`POST /orders`, source: `id` -> target: `order_id`).
-- Automatically computes topological execution plans (`SequencePlan`).
+- Python 3.10+
+- Node.js 18+ (for JavaScript/TypeScript scanning using native `node:test`)
 
-### 3. Dependent Sequence Runner
-- Executes multi-step workflows: `Login -> Create Order -> Retrieve Order`.
-- Propagates dynamic values across requests (e.g., extracts token from login and order ID from order creation, passing both into order retrieval).
-
-### 4. Schemathesis Baseline Integration
-- Integrated Schemathesis 4.x property-based testing to provide comparative benchmark coverage.
-- All Schemathesis test cases are explicitly labeled `[SCHEMATHESIS]` to distinguish them from custom agent-generated tests.
-
----
-
-## Stage 5: Bug Detection & Security Oracles (`agent/oracles.py`)
-
-The agent implements three deterministic behavioral oracles that inspect HTTP test results:
-
-1. **Check 1: Server Error Oracle (`ServerErrorOracle`):**
-   - Catches HTTP 5xx responses (500, 502, 503).
-   - Records sanitized request details and response data as a suspicious/possible problem (`is_confirmed=False`) for investigation without prematurely asserting a bug.
-
-2. **Check 2: Schema Conformance Oracle (`SchemaConformanceOracle`):**
-   - Compares actual HTTP status codes and response bodies with the OpenAPI documentation.
-   - Uses standard JSON Schema validation (`jsonschema`) to flag missing required fields, type mismatches (e.g. price returned as string), and undocumented status codes as confirmed contract violations (`is_confirmed=True`).
-   - If expected behavior is not documented, does not invent rules.
-
-3. **Check 3: BOLA Security Oracle (`BOLAOracle`):**
-   - Tests for Broken Object Level Authorization (OWASP API1:2023):
-     1. User Alice logs in and creates an order (`POST /orders`).
-     2. User Bob logs in and attempts to retrieve Alice's order using Bob's Bearer token (`GET /orders/{order_id}`).
-     3. Compares caller identity (`user-bob`) with resource owner (`user-alice`). If Bob receives Alice's private data, records a confirmed critical BOLA vulnerability with evidence.
-     4. Runs a control check to ensure Alice accessing her own order is recognized as authorized and not flagged.
-
-4. **Credential Redaction:**
-   - All passwords, tokens, and `Authorization` headers are sanitized (`[REDACTED]`) before being recorded in finding evidence.
-
----
-
-## Stage 6: Bug Verification & Test Minimization (`agent/verifier.py`, `agent/minimizer.py`)
-
-1. **Bug Verifier (`agent/verifier.py`):**
-   - Resets state and replays candidate bug scenarios at least twice (`repeat_count >= 2`).
-   - Categorizes findings into `CONFIRMED_REPRODUCIBLE`, `FLAKY`, or `NOT_REPRODUCIBLE`.
-   - Never reuses old credentials or resource IDs across replay runs.
-
-2. **Test Minimizer (`agent/minimizer.py`):**
-   - Applies Delta Debugging (1-minimal deletion pass) on failing multi-step request sequences.
-   - Removes unnecessary intermediate requests (e.g. redundant health checks).
-   - Prunes non-essential fields from JSON request bodies (e.g. optional notes).
-   - Computes reduction metrics:
-     $$\text{Reduction Ratio} = 1 - \left(\frac{\text{Minimized Requests}}{\text{Original Requests}}\right)$$
-
----
-
-## Stage 7: AI-Assisted Diagnosis & Reporting (`agent/reporter.py`)
-
-1. **AI-Assisted Bug Diagnosis:**
-   - Evaluates confirmed and minimized bug findings against black-box observations.
-   - Formulates clear root-cause hypotheses (explicitly flagged as hypotheses, never claiming to inspect unprovided source code).
-   - Provides supporting evidence, recommended verification steps, remaining uncertainties, and actionable code fixes.
-   - **Remediation for BOLA:** Suggests adding an object ownership check in `sample_api/main.py`:
-     ```python
-     if order["user_id"] != current_user["user_id"]:
-         raise HTTPException(
-             status_code=status.HTTP_403_FORBIDDEN,
-             detail="Forbidden: You do not have permission to access this order."
-         )
-     ```
-
-2. **Configurable LLM Client & Graceful Fallback:**
-   - Supported via `LLMDiagnoser`: reads `LLM_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY` from environment variables.
-   - If no API key is configured or upon network/timeout errors, automatically falls back to `RuleBasedDiagnoser` without failing or claiming an AI call was performed.
-
-3. **Dual-Format Professional Bug Reports:**
-   - Saves comprehensive Markdown (`.md`) and JSON (`.json`) reports to `reports/`.
-   - Redacts all sensitive authorization tokens, passwords, and secrets (`[REDACTED]`).
-
-4. **Standalone Reproductions:**
-   - **Windows PowerShell:** Injects copy-pasteable `Invoke-RestMethod` commands replicating Alice's order creation and Bob's unauthorized access.
-   - **Pytest:** Generates standalone runnable test `reports/test_reproduce_bola.py`.
-
----
-
-## Setup & Running on Windows (VS Code / PowerShell)
-
-Open the project folder in VS Code. Open **Terminal → New Terminal** (PowerShell).
-
-### 1. Install Dependencies
+### Quick Setup
 
 ```powershell
-python -m pip install -r requirements.txt
+# Create and activate virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# Install requirements
+pip install -r requirements.txt
 ```
 
-### 2. Start the Sample API (Terminal 1)
+---
+
+## Usage Guide
+
+### 1. Scan a Local Repository
+
+Scan a target repository, run isolated tests, and produce structured reports:
 
 ```powershell
-python -m uvicorn sample_api.main:app --host 127.0.0.1 --port 8000 --reload
+python -m local_agent scan path/to/local_repository
 ```
 
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
+Options:
+- `--output, -o <dir>`: Custom directory for reports and generated regression tests.
+- `--timeout, -t <seconds>`: Per-test execution timeout limit in seconds (default: 5.0).
+- `--verify-fix <fixed_repo_path>`: Cross-verify that generated tests fail on the target repo and pass on a corrected revision.
 
-### 3. Optional: Configure LLM Diagnosis (Terminal 2)
+### 2. Inspect Project Inventory
+
+View detected languages, manifests, source files, and code symbols:
 
 ```powershell
-# Optional: Set an OpenAI or compatible key (otherwise uses deterministic rule-based fallback)
-$env:LLM_API_KEY = "your-api-key-here"
+python -m local_agent inventory path/to/local_repository
 ```
 
-### 4. Run End-to-End Bug Reporting Pipeline (Terminal 2)
+### 3. Replay a Generated Regression Test
+
+Replay any generated test against a repository in isolation:
 
 ```powershell
-python -m agent.reporter http://127.0.0.1:8000
+python -m local_agent replay path/to/generated_test.py path/to/local_repository
 ```
 
-Outputs:
-- Markdown report: `reports/finding-xxxx_bola_violation.md`
-- JSON report: `reports/finding-xxxx_bola_violation.json`
-- Pytest reproduction: `reports/test_reproduce_bola.py`
+---
 
-### 5. Run the Standalone Pytest Reproduction
+## Empirical Benchmark & Showcase
+
+Run the showcase evaluation across Python, JavaScript, and Unsupported benchmark projects:
 
 ```powershell
-pytest reports/test_reproduce_bola.py -v
+python -m benchmarks.evaluator
 ```
 
-### 6. Run Bug Verification & Minimization Manually
+Benchmark targets:
+- `benchmarks/sample_python_repo`: Unfamiliar Python streaming engine with division-by-zero, empty collection underflow, and contract defects.
+- `benchmarks/sample_python_repo_fixed`: Corrected Python revision.
+- `benchmarks/sample_js_repo`: Unfamiliar JavaScript token processor with null dereference, contract violation, and state machine underflow.
+- `benchmarks/sample_js_repo_fixed`: Corrected JavaScript revision.
+- `benchmarks/sample_unsupported_repo`: Project with missing native drivers to evaluate honest setup gap reporting.
 
-```powershell
-# Verification:
-python -m agent.verifier http://127.0.0.1:8000
+Results are published to:
+- `benchmarks/BENCHMARK_REPORT.md`
+- `benchmarks/benchmark_results.json`
+- `benchmarks/benchmark_results.csv`
 
-# Minimization:
-python -m agent.minimizer http://127.0.0.1:8000
-```
+---
 
-### 7. Run Evaluation Benchmarks (Step 8)
+## Running Automated Tests
 
-Run empirical evaluation of Autonomous Agent vs Schemathesis baseline:
-
-```powershell
-python -m benchmarks.evaluator http://127.0.0.1:8000
-```
-
-Outputs:
-- Machine-readable JSON: `benchmarks/benchmark_results.json`
-- Tabular CSV: `benchmarks/benchmark_results.csv`
-- Detailed Markdown: `benchmarks/BENCHMARK_REPORT.md`
-
-### 8. Run All Automated Tests
-
-Run all 94 automated tests across all 8 roadmap stages:
+Run the full automated test suite (26 unit and integration tests):
 
 ```powershell
 pytest -v
 ```
-
-Or run tests by module:
-
-```powershell
-# Step 8 Benchmarks and Evaluation (3 tests)
-pytest tests/test_benchmarks.py -v
-
-# Step 7 AI Diagnosis and Reporting (11 tests)
-pytest tests/test_reporter.py -v
-
-# Step 6 Verification and Minimization (11 tests)
-pytest tests/test_verifier_minimizer.py -v
-
-# Step 5 Bug Detection Oracles & BOLA (14 tests)
-pytest tests/test_oracles.py -v
-
-# Step 4 Test Generation and Sequences (16 tests)
-pytest tests/test_generator.py tests/test_dependency_graph.py -v
-
-# Step 3 Request Executor (13 tests)
-pytest tests/test_executor.py -v
-
-# Step 2 OpenAPI Specification Reader (16 tests)
-pytest tests/test_spec_reader.py -v
-
-# Step 1 Sample API and BOLA Bug (9 tests)
-pytest tests/test_sample_api.py -v
-```
-

@@ -1,0 +1,7 @@
+{
+  "name": "token-matrix",
+  "version": "1.0.1",
+  "type": "module",
+  "description": "Token matrix processing and buffering utility (Fixed)"
+}
+

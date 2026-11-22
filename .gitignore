@@ -3,3 +3,8 @@ __pycache__/
 *$py.class
 .pytest_cache/
 .env
+venv/
+node_modules/
+reports/
+scan_output/
+*.log
